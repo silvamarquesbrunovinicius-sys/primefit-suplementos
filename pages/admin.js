@@ -12,6 +12,38 @@ function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+/**
+ * ✅ GARANTE que SEMPRE exista "Outro" e "Promoções" na lista,
+ * mesmo se o banco ainda não tiver nenhuma categoria cadastrada.
+ */
+function garantirCategoriasMinimas(arr) {
+  const lista = Array.isArray(arr) ? arr : [];
+
+  const temOutro = lista.some(
+    (c) => String(c?.slug || "").toLowerCase().trim() === "outro"
+  );
+  const temPromo = lista.some(
+    (c) => String(c?.slug || "").toLowerCase().trim() === "promocoes"
+  );
+
+  const base = [];
+  if (!temOutro) base.push({ id: "outro", nome: "Outro", slug: "outro", ativo: true });
+  if (!temPromo) base.push({ id: "promocoes", nome: "Promoções", slug: "promocoes", ativo: true });
+
+  // remove duplicados por slug
+  const seen = new Set();
+  const final = [];
+  for (const c of [...base, ...lista]) {
+    const slug = String(c?.slug || "").toLowerCase().trim();
+    if (!slug || seen.has(slug)) continue;
+    seen.add(slug);
+    final.push(c);
+  }
+
+  final.sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
+  return final;
+}
+
 export default function Admin() {
   // ===== AUTH / LISTA =====
   const [autorizado, setAutorizado] = useState(false);
@@ -77,10 +109,22 @@ export default function Admin() {
       const r = await fetch("/api/categorias");
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || "Erro ao carregar categorias");
-      setCategorias(Array.isArray(data) ? data : []);
+
+      const listaFinal = garantirCategoriasMinimas(data);
+      setCategorias(listaFinal);
+
+      // ✅ se a categoria atual do form não existir (ex: banco vazio), volta para "Outro"
+      const existe = listaFinal.some((c) => c.nome === form.categoria);
+      if (!existe) {
+        setForm((f) => ({ ...f, categoria: "Outro" }));
+      }
     } catch (e) {
       console.error(e);
-      setCategorias([]);
+      const fallback = garantirCategoriasMinimas([]);
+      setCategorias(fallback);
+
+      // ✅ garante que o select sempre tenha "Outro"
+      setForm((f) => ({ ...f, categoria: "Outro" }));
     }
   }
 
@@ -112,6 +156,9 @@ export default function Admin() {
 
       setAutorizado(true);
       setProdutos(lista);
+
+      // ✅ carrega categorias ao logar
+      carregarCategorias();
     } catch (err) {
       alert(err.message);
     }
@@ -217,9 +264,9 @@ export default function Admin() {
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || "Erro ao criar categoria");
 
-      setCategorias((prev) =>
-        [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome))
-      );
+      const listaFinal = garantirCategoriasMinimas([...categorias, data]);
+      setCategorias(listaFinal);
+
       setForm((f) => ({ ...f, categoria: data.nome }));
       setNovaCategoria("");
     } catch (e) {
@@ -240,7 +287,11 @@ export default function Admin() {
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || "Erro ao remover categoria");
 
-      setCategorias((prev) => prev.filter((c) => c.id !== cat.id));
+      const listaFinal = garantirCategoriasMinimas(
+        categorias.filter((c) => c.id !== cat.id)
+      );
+      setCategorias(listaFinal);
+
       setForm((f) => ({
         ...f,
         categoria: f.categoria === cat.nome ? "Outro" : f.categoria,
@@ -321,7 +372,8 @@ export default function Admin() {
         .map((u) => corrigirUrlImagem(u))
         .filter(Boolean);
 
-      const imagemPrincipalFinal = urlsFinais[0] || corrigirUrlImagem(form.imagem_url) || null;
+      const imagemPrincipalFinal =
+        urlsFinais[0] || corrigirUrlImagem(form.imagem_url) || null;
 
       const payload = {
         id: form.id,
@@ -504,7 +556,7 @@ export default function Admin() {
                 className="w-full mt-1 bg-black border border-yellow-400/60 rounded-xl px-4 py-2 outline-none"
               >
                 {categorias.map((c) => (
-                  <option key={c.id} value={c.nome}>
+                  <option key={c.id || c.slug} value={c.nome}>
                     {c.nome}
                   </option>
                 ))}
@@ -744,7 +796,9 @@ export default function Admin() {
 
                   <h3 className="mt-2 font-black">{p.nome}</h3>
                   <p className="text-yellow-400 font-black text-lg mt-1">{brl(p.preco)}</p>
-                  {p.descricao ? <p className="text-sm text-gray-300 mt-1">{p.descricao}</p> : null}
+                  {p.descricao ? (
+                    <p className="text-sm text-gray-300 mt-1">{p.descricao}</p>
+                  ) : null}
                 </div>
 
                 <div className="mt-4 flex gap-2">
