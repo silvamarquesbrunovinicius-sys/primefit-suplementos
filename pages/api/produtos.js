@@ -8,9 +8,6 @@ function isAdmin(req) {
 
 export default async function handler(req, res) {
   try {
-    const { supabaseAdmin, envError } = supabaseAdmin();
-    if (envError) return res.status(500).json({ error: envError });
-
     // =========================
     // GET (público ou admin)
     // =========================
@@ -83,7 +80,8 @@ export default async function handler(req, res) {
       const body = req.body || {};
       const id = body.id;
 
-      if (!id) return res.status(400).json({ error: "ID do produto é obrigatório" });
+      if (!id)
+        return res.status(400).json({ error: "ID do produto é obrigatório" });
 
       const nome = String(body.nome || "").trim();
       const preco = Number(String(body.preco || "").replace(",", "."));
