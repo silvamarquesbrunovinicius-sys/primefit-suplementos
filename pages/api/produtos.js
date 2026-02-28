@@ -6,94 +6,67 @@ function isAdmin(req) {
   return pass && pass === process.env.ADMIN_PASSWORD;
 }
 
-// aceita array, string JSON, ou null
-function normalizeImagens(v) {
-  if (!v) return null;
-  if (Array.isArray(v)) return v.filter(Boolean);
-
-  if (typeof v === "string") {
-    try {
-      const parsed = JSON.parse(v);
-      if (Array.isArray(parsed)) return parsed.filter(Boolean);
-    } catch {
-      // se não for JSON, ignora
-    }
-  }
-  return null;
-}
-
 export default async function handler(req, res) {
   try {
-    // ✅ valida env básico (ajuda MUITO a evitar 500 misterioso)
-    if (!process.env.ADMIN_PASSWORD) {
-      // não bloqueia GET normal, mas avisa se for admin
-      // (se quiser, pode remover este bloco)
-    }
-
     // =========================
-    // GET - listar produtos
+    // GET (público ou admin)
     // =========================
     if (req.method === "GET") {
       const adminMode = req.query.admin === "1";
 
-      let query = supabaseAdmin
-        .from("produtos")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!adminMode) {
-        query = query.eq("ativo", true);
-      } else {
-        if (!isAdmin(req)) {
-          return res.status(401).json({ error: "Senha inválida" });
-        }
+      // Se pediu modo admin, valida senha
+      if (adminMode && !isAdmin(req)) {
+        return res.status(401).json({ error: "Senha inválida" });
       }
 
-      const { data, error } = await query;
+      let q = supabaseAdmin
+        .from("produtos")
+        .select(
+          "id,nome,preco,categoria,destaque,descricao,ativo,imagem_url,imagens,created_at"
+        )
+        .order("created_at", { ascending: false });
 
+      // público só vê ativos
+      if (!adminMode) q = q.eq("ativo", true);
+
+      const { data, error } = await q;
       if (error) return res.status(400).json({ error: error.message });
+
       return res.status(200).json(data || []);
     }
 
+    // A partir daqui: só admin (POST/PUT/DELETE)
+    if (!isAdmin(req)) {
+      return res.status(401).json({ error: "Senha inválida" });
+    }
+
     // =========================
-    // POST - criar produto (admin)
+    // POST (criar produto)
     // =========================
     if (req.method === "POST") {
-      if (!isAdmin(req)) return res.status(401).json({ error: "Senha inválida" });
+      const body = req.body || {};
 
-      const {
+      const nome = String(body.nome || "").trim();
+      const preco = Number(String(body.preco || "").replace(",", "."));
+      const categoria = String(body.categoria || "Outro").trim() || "Outro";
+
+      if (!nome) return res.status(400).json({ error: "Nome é obrigatório" });
+      if (!preco || preco <= 0)
+        return res.status(400).json({ error: "Preço inválido" });
+
+      // imagem_url pode ser null, mas se você quiser obrigar, descomente:
+      // if (!body.imagem_url) return res.status(400).json({ error: "imagem_url é obrigatório" });
+
+      const payload = {
         nome,
         preco,
         categoria,
-        destaque,
-        descricao,
-        imagem_url,
-        imagens,
-        ativo,
-      } = req.body || {};
-
-      const imagensNorm = normalizeImagens(imagens);
-
-      const imagemPrincipal =
-        (imagem_url ? String(imagem_url).trim() : "") ||
-        (imagensNorm?.[0] ? String(imagensNorm[0]).trim() : "") ||
-        null;
-
-      const payload = {
-        nome: String(nome || "").trim(),
-        preco: Number(preco || 0),
-        categoria: String(categoria || "Outro").trim(),
-        destaque: destaque ? String(destaque).trim() : null,
-        descricao: descricao ? String(descricao).trim() : null,
-        imagem_url: imagemPrincipal,
-        imagens: imagensNorm,
-        ativo: ativo !== false,
+        destaque: body.destaque ? String(body.destaque).trim() : null,
+        descricao: body.descricao ? String(body.descricao).trim() : null,
+        ativo: body.ativo !== false,
+        imagem_url: body.imagem_url ? String(body.imagem_url).trim() : null,
+        imagens: Array.isArray(body.imagens) ? body.imagens : null,
       };
-
-      if (!payload.nome) return res.status(400).json({ error: "Nome é obrigatório" });
-      if (!payload.preco || payload.preco <= 0) {
-        return res.status(400).json({ error: "Preço inválido" });
-      }
 
       const { data, error } = await supabaseAdmin
         .from("produtos")
@@ -106,60 +79,53 @@ export default async function handler(req, res) {
     }
 
     // =========================
-    // PUT - atualizar produto (admin)
+    // PUT (editar produto)
     // =========================
     if (req.method === "PUT") {
-      if (!isAdmin(req)) return res.status(401).json({ error: "Senha inválida" });
+      const body = req.body || {};
+      const id = body.id;
 
-      const {
-        id,
+      if (!id) return res.status(400).json({ error: "ID do produto é obrigatório" });
+
+      const nome = String(body.nome || "").trim();
+      const preco = Number(String(body.preco || "").replace(",", "."));
+      const categoria = String(body.categoria || "Outro").trim() || "Outro";
+
+      if (!nome) return res.status(400).json({ error: "Nome é obrigatório" });
+      if (!preco || preco <= 0)
+        return res.status(400).json({ error: "Preço inválido" });
+
+      const payload = {
         nome,
         preco,
         categoria,
-        destaque,
-        descricao,
-        imagem_url,
-        imagens,
-        ativo,
-      } = req.body || {};
-
-      if (!id) return res.status(400).json({ error: "ID é obrigatório" });
-
-      const imagensNorm = normalizeImagens(imagens);
-
-      const imagemPrincipal =
-        (imagem_url ? String(imagem_url).trim() : "") ||
-        (imagensNorm?.[0] ? String(imagensNorm[0]).trim() : "") ||
-        null;
-
-      const payload = {
-        nome: String(nome || "").trim(),
-        preco: Number(preco || 0),
-        categoria: String(categoria || "Outro").trim(),
-        destaque: destaque ? String(destaque).trim() : null,
-        descricao: descricao ? String(descricao).trim() : null,
-        imagem_url: imagemPrincipal,
-        ...(imagens !== undefined ? { imagens: imagensNorm } : {}),
-        ativo: ativo !== false,
+        destaque: body.destaque ? String(body.destaque).trim() : null,
+        descricao: body.descricao ? String(body.descricao).trim() : null,
+        ativo: body.ativo !== false,
+        imagem_url: body.imagem_url ? String(body.imagem_url).trim() : null,
+        imagens: Array.isArray(body.imagens) ? body.imagens : null,
       };
 
+      // ✅ O PULO DO GATO:
+      // - filtra por id
+      // - usa maybeSingle pra não estourar "Cannot coerce..."
       const { data, error } = await supabaseAdmin
         .from("produtos")
         .update(payload)
         .eq("id", id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) return res.status(400).json({ error: error.message });
+      if (!data) return res.status(404).json({ error: "Produto não encontrado" });
+
       return res.status(200).json(data);
     }
 
     // =========================
-    // DELETE - remover produto (admin)
+    // DELETE (remover produto)
     // =========================
     if (req.method === "DELETE") {
-      if (!isAdmin(req)) return res.status(401).json({ error: "Senha inválida" });
-
       const id = req.query.id;
       if (!id) return res.status(400).json({ error: "ID é obrigatório" });
 
@@ -172,8 +138,6 @@ export default async function handler(req, res) {
     res.setHeader("Allow", ["GET", "POST", "PUT", "DELETE"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (e) {
-    // ✅ ajuda a debugar na Vercel
-    console.error("API /produtos error:", e);
     return res.status(500).json({ error: e?.message || "Erro interno" });
   }
 }

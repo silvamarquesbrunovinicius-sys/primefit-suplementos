@@ -1,10 +1,9 @@
-
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { corrigirUrlImagem } from "../lib/imagem";
 import CartButton from "../components/CartButton";
 
-/** ✅ normaliza texto (acentos/caixa/espaços) */
+/** normaliza texto (acentos/caixa/espaços) */
 function normalizarCategoria(v) {
   return String(v || "")
     .trim()
@@ -17,56 +16,71 @@ function ehPromocao(cat) {
   return normalizarCategoria(cat) === normalizarCategoria("Promoções");
 }
 
+const CATEGORIAS_FALLBACK = [
+  "Whey",
+  "Creatinas",
+  "Pré-treino",
+  "Emagrecedores",
+  "Vitaminas",
+  "Combos",
+  "Promoções",
+  "Outro",
+];
+
 export default function Home() {
   const [listaProdutos, setListaProdutos] = useState([]);
   const [ofertas, setOfertas] = useState([]);
   const [slideAtivo, setSlideAtivo] = useState(0);
 
-  // ✅ categorias agora vem SOMENTE do banco
   const [categoriasDB, setCategoriasDB] = useState([]);
   const [loadingCategorias, setLoadingCategorias] = useState(true);
 
-useEffect(() => {
-  async function carregarProdutos() {
-    try {
-      const res = await fetch("/api/produtos");
-      const data = await res.json();
+  const [erroCategorias, setErroCategorias] = useState("");
+  const [erroProdutos, setErroProdutos] = useState("");
 
-      if (!res.ok) throw new Error(data?.error || "Erro ao buscar produtos");
+  // ✅ Produtos
+  useEffect(() => {
+    async function carregarProdutos() {
+      try {
+        setErroProdutos("");
+        const res = await fetch("/api/produtos");
+        const data = await res.json();
 
-      const lista = (Array.isArray(data) ? data : [])
-        .filter((p) => p.ativo !== false)
-        .map((p) => ({
-          id: p.id,
-          nome: p.nome || "Produto",
-          preco: Number(p.preco || 0),
-          categoria: String(p.categoria || "Outro").trim(),
-          destaque: p.destaque || "",
-          descricao: p.descricao || "",
-          ativo: p.ativo !== false,
+        if (!res.ok) throw new Error(data?.error || "Erro ao buscar produtos");
 
-          // ✅ AQUI é o mais importante:
-          imagem: corrigirUrlImagem(p.imagem_url || p.imagem),
-          imagens: Array.isArray(p.imagens) ? p.imagens.map(corrigirUrlImagem) : [],
-        }));
+        const lista = (Array.isArray(data) ? data : [])
+          .filter((p) => p.ativo !== false)
+          .map((p) => ({
+            id: p.id,
+            nome: p.nome || "Produto",
+            preco: Number(p.preco || 0),
+            categoria: String(p.categoria || "Outro").trim(),
+            destaque: p.destaque || "",
+            descricao: p.descricao || "",
+            ativo: p.ativo !== false,
+            imagem: corrigirUrlImagem(p.imagem_url || p.imagem),
+            imagens: Array.isArray(p.imagens) ? p.imagens.map(corrigirUrlImagem) : [],
+          }));
 
-      setListaProdutos(lista);
-      setOfertas(lista.slice(0, 4));
-    } catch (err) {
-      console.error(err);
-      setListaProdutos([]);
-      setOfertas([]);
+        setListaProdutos(lista);
+        setOfertas(lista.slice(0, 4));
+      } catch (err) {
+        console.error(err);
+        setErroProdutos(err.message || "Erro ao carregar produtos");
+        setListaProdutos([]);
+        setOfertas([]);
+      }
     }
-  }
 
-  carregarProdutos();
-}, []);
+    carregarProdutos();
+  }, []);
 
-  // ✅ carrega categorias do BANCO (sem localStorage/json)
+  // ✅ Categorias
   useEffect(() => {
     async function carregarCategorias() {
       try {
         setLoadingCategorias(true);
+        setErroCategorias("");
 
         const r = await fetch("/api/categorias");
         const data = await r.json();
@@ -86,12 +100,11 @@ useEffect(() => {
           unicas.push({ ...c, nome });
         }
 
-        // ordena por nome
         unicas.sort((a, b) => a.nome.localeCompare(b.nome));
-
         setCategoriasDB(unicas);
       } catch (e) {
         console.error(e);
+        setErroCategorias(e.message || "Erro ao carregar categorias");
         setCategoriasDB([]);
       } finally {
         setLoadingCategorias(false);
@@ -101,7 +114,7 @@ useEffect(() => {
     carregarCategorias();
   }, []);
 
-  // ✅ Slides do carrossel: só Promoções (do banco)
+  // ✅ Slides do carrossel: só Promoções
   const slidesPromocoes = useMemo(() => {
     const promos = (listaProdutos || []).filter((p) => ehPromocao(p.categoria));
 
@@ -128,17 +141,13 @@ useEffect(() => {
     }));
   }, [listaProdutos]);
 
-  useEffect(() => {
-    setSlideAtivo(0);
-  }, [slidesPromocoes.length]);
+  useEffect(() => setSlideAtivo(0), [slidesPromocoes.length]);
 
   useEffect(() => {
     if (!slidesPromocoes || slidesPromocoes.length <= 1) return;
-
     const t = setInterval(() => {
       setSlideAtivo((s) => (s + 1) % slidesPromocoes.length);
     }, 3500);
-
     return () => clearInterval(t);
   }, [slidesPromocoes.length]);
 
@@ -150,9 +159,15 @@ useEffect(() => {
     setSlideAtivo((s) => (s + 1) % slidesPromocoes.length);
   }
 
+  // ✅ se não veio do banco, usa fallback (igual antes)
+  const categoriasParaMostrar =
+    !loadingCategorias && categoriasDB.length > 0
+      ? categoriasDB.map((c) => c.nome)
+      : CATEGORIAS_FALLBACK;
+
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* HEADER */}
+      {/* HEADER - igual antes */}
       <header className="border-b border-yellow-400">
         <div className="max-w-7xl mx-auto px-4 py-5 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -177,7 +192,6 @@ useEffect(() => {
               Produtos
             </Link>
 
-            {/* ✅ BOTÃO DO CARRINHO */}
             <CartButton />
 
             <Link
@@ -190,129 +204,131 @@ useEffect(() => {
         </div>
       </header>
 
-      {/* ✅ CARROSSEL */}
-<section className="max-w-7xl mx-auto px-4 py-6">
-  <div className="relative rounded-2xl overflow-hidden border border-yellow-400 bg-black">
-    <img
-      src={slidesPromocoes[slideAtivo]?.imagem || "/banner.jpg"}
-      alt="Promoções PrimeFit"
-      className="w-full h-[260px] sm:h-[320px] md:h-[360px] object-cover"
-    />
-
-    {/* overlay mais leve, igual antes */}
-    <div className="absolute inset-0 bg-black/25" />
-
-    {/* BOTÕES TOPO (Promoções / Oferta do dia) */}
-    <div className="absolute top-4 left-4 flex gap-3 z-10">
-      <button className="bg-yellow-400 text-black text-sm font-black px-5 py-2 rounded-full">
-        🔥 Promoções
-      </button>
-
-      <button className="border border-yellow-400 text-yellow-400 text-sm font-black px-5 py-2 rounded-full bg-black/40">
-        Oferta do dia
-      </button>
-    </div>
-
-    {/* CONTEÚDO DO BANNER (mais à esquerda, como antes) */}
-    <div className="absolute left-6 bottom-6 z-10 max-w-xl">
-      <h2 className="text-3xl sm:text-4xl font-black text-white">
-        {slidesPromocoes[slideAtivo]?.tipo === "produto"
-          ? slidesPromocoes[slideAtivo]?.titulo
-          : "Promoções PrimeFit"}
-      </h2>
-
-      {slidesPromocoes[slideAtivo]?.tipo === "produto" && (
-        <p className="mt-2 text-yellow-400 text-2xl font-black">
-          R$ {Number(slidesPromocoes[slideAtivo]?.preco || 0)
-            .toFixed(2)
-            .replace(".", ",")}
-        </p>
-      )}
-
-      <div className="mt-4 flex gap-3">
-        <Link
-          href={slidesPromocoes[slideAtivo]?.link || "/produtos"}
-          className="bg-yellow-400 text-black px-6 py-3 rounded-xl font-black hover:bg-yellow-300 transition"
-        >
-          Ver oferta
-        </Link>
-
-        <Link
-          href={slidesPromocoes[slideAtivo]?.link || "/produtos"}
-          className="border-2 border-yellow-400 text-yellow-400 px-6 py-3 rounded-xl font-black hover:bg-yellow-400 hover:text-black transition"
-        >
-          Comprar agora
-        </Link>
-      </div>
-
-      <p className="mt-2 text-sm text-gray-200">
-        Pagamento e entrega via WhatsApp
-      </p>
-    </div>
-
-    {/* setas */}
-    {slidesPromocoes.length > 1 && (
-      <>
-        <button
-          onClick={prevSlide}
-          className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 border border-yellow-400 text-yellow-400 w-10 h-10 rounded-full font-black hover:bg-yellow-400 hover:text-black transition z-10"
-          aria-label="Anterior"
-        >
-          ‹
-        </button>
-        <button
-          onClick={nextSlide}
-          className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 border border-yellow-400 text-yellow-400 w-10 h-10 rounded-full font-black hover:bg-yellow-400 hover:text-black transition z-10"
-          aria-label="Próximo"
-        >
-          ›
-        </button>
-      </>
-    )}
-
-    {/* pontinhos */}
-    {slidesPromocoes.length > 1 && (
-      <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 z-10">
-        {slidesPromocoes.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setSlideAtivo(i)}
-            className={`h-2 rounded-full transition ${
-              i === slideAtivo ? "w-8 bg-yellow-400" : "w-2 bg-white/50"
-            }`}
-            aria-label={`Ir para slide ${i + 1}`}
+      {/* CARROSSEL */}
+      <section className="max-w-7xl mx-auto px-4 py-6">
+        <div className="relative rounded-2xl overflow-hidden border border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.15)] bg-black">
+          <img
+            src={slidesPromocoes[slideAtivo]?.imagem || "/banner.jpg"}
+            alt="Promoções PrimeFit"
+            className="w-full h-[240px] sm:h-[340px] md:h-[420px] object-cover"
           />
-        ))}
-      </div>
-    )}
-  </div>
-</section>
 
-      {/* ✅ CATEGORIAS (AGORA SOMENTE DO BANCO) */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/35 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
+
+          <div className="absolute top-4 left-4 flex items-center gap-2">
+            <span className="bg-yellow-400 text-black text-xs sm:text-sm font-black px-3 py-1 rounded-full">
+              🔥 PROMOÇÕES
+            </span>
+
+            {slidesPromocoes[slideAtivo]?.tipo === "produto" && (
+              <span className="border border-yellow-400 text-yellow-400 text-xs sm:text-sm font-extrabold px-3 py-1 rounded-full bg-black/50">
+                OFERTA DO DIA
+              </span>
+            )}
+          </div>
+
+          <div className="absolute inset-0 flex items-end">
+            <div className="w-full p-5 sm:p-8 md:p-10">
+              {slidesPromocoes[slideAtivo]?.tipo === "produto" ? (
+                <>
+                  <h2 className="text-2xl sm:text-4xl md:text-5xl font-black text-white max-w-3xl">
+                    {slidesPromocoes[slideAtivo]?.titulo}
+                  </h2>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <span className="text-yellow-400 text-xl sm:text-3xl font-black">
+                      R$ {Number(slidesPromocoes[slideAtivo]?.preco || 0).toFixed(2).replace(".", ",")}
+                    </span>
+
+                    <span className="text-xs sm:text-sm text-gray-200 bg-black/50 border border-white/10 px-3 py-1 rounded-full">
+                      Pagamento e entrega via WhatsApp
+                    </span>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Link
+                      href={slidesPromocoes[slideAtivo]?.link || "/produtos"}
+                      className="bg-yellow-400 text-black px-6 py-3 rounded-xl font-black hover:bg-yellow-300 transition"
+                    >
+                      Ver oferta
+                    </Link>
+
+                    <Link
+                      href={slidesPromocoes[slideAtivo]?.link || "/produtos"}
+                      className="border-2 border-yellow-400 text-yellow-400 px-6 py-3 rounded-xl font-black hover:bg-yellow-400 hover:text-black transition"
+                    >
+                      Comprar agora
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl sm:text-4xl md:text-5xl font-black text-white max-w-3xl">
+                    {slidesPromocoes[slideAtivo]?.titulo || "Promoções PrimeFit"}
+                  </h2>
+
+                  <p className="mt-3 text-gray-200 text-sm sm:text-base max-w-2xl">
+                    {slidesPromocoes[slideAtivo]?.subtitulo || "Confira nossas promoções e ofertas especiais"}
+                  </p>
+
+                  <div className="mt-5">
+                    <Link
+                      href={slidesPromocoes[slideAtivo]?.link || "/produtos"}
+                      className="bg-yellow-400 text-black px-7 py-3 rounded-xl font-black hover:bg-yellow-300 transition"
+                    >
+                      Ver produtos
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {slidesPromocoes.length > 1 && (
+            <>
+              <button
+                onClick={prevSlide}
+                className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/70 border border-yellow-400 text-yellow-400 w-11 h-11 rounded-full font-black hover:bg-yellow-400 hover:text-black transition"
+                aria-label="Anterior"
+              >
+                ‹
+              </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/70 border border-yellow-400 text-yellow-400 w-11 h-11 rounded-full font-black hover:bg-yellow-400 hover:text-black transition"
+                aria-label="Próximo"
+              >
+                ›
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* CATEGORIAS - com fallback (não some mais) */}
       <section className="max-w-7xl mx-auto px-4 py-6">
         <h2 className="text-center text-yellow-400 font-extrabold tracking-widest text-xl sm:text-2xl">
           CATEGORIAS
         </h2>
 
-        {loadingCategorias ? (
-          <p className="text-center text-gray-400 mt-6">Carregando categorias...</p>
-        ) : (
-          <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {categoriasDB.map((c) => (
-              <Link
-                key={c.id || c.nome}
-                href={`/produtos?cat=${encodeURIComponent(c.nome)}`}
-                className="text-center py-3 rounded-xl font-bold border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition"
-              >
-                {c.nome}
-              </Link>
-            ))}
-          </div>
+        {erroCategorias && (
+          <p className="text-center text-red-400 mt-3 text-sm">
+            {erroCategorias} (mostrando categorias padrão)
+          </p>
         )}
 
-        {!loadingCategorias && categoriasDB.length === 0 && (
-          <p className="text-center text-gray-400 mt-6">Nenhuma categoria cadastrada ainda.</p>
-        )}
+        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {categoriasParaMostrar.map((nome) => (
+            <Link
+              key={nome}
+              href={`/produtos?cat=${encodeURIComponent(nome)}`}
+              className="text-center py-3 rounded-xl font-bold border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition"
+            >
+              {nome}
+            </Link>
+          ))}
+        </div>
       </section>
 
       {/* OFERTAS */}
@@ -320,6 +336,10 @@ useEffect(() => {
         <h2 className="text-center text-yellow-400 font-extrabold tracking-widest text-xl sm:text-2xl">
           OFERTAS ESPECIAIS
         </h2>
+
+        {erroProdutos && (
+          <p className="text-center text-red-400 mt-3 text-sm">{erroProdutos}</p>
+        )}
 
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           {ofertas.map((p) => (
@@ -341,7 +361,6 @@ useEffect(() => {
 
               <div className="px-4 pb-4">
                 <p className="text-xs text-gray-300 uppercase tracking-wide min-h-[36px]">{p.nome}</p>
-
                 <p className="mt-3 text-center text-2xl font-extrabold text-yellow-400">
                   R$ {Number(p.preco || 0).toFixed(2).replace(".", ",")}
                 </p>
@@ -366,17 +385,15 @@ useEffect(() => {
           ))}
         </div>
 
-        {ofertas.length === 0 && (
+        {ofertas.length === 0 && !erroProdutos && (
           <p className="text-center text-gray-400 mt-10">Nenhum produto cadastrado ainda.</p>
         )}
       </section>
 
-      {/* FOOTER */}
       <footer className="border-t border-yellow-400 py-4 text-center text-sm text-gray-400">
         ©️ {new Date().getFullYear()} PrimeFit Suplementos
       </footer>
 
-      {/* WHATSAPP FIXO */}
       <a
         href="https://wa.me/5598999614108"
         target="_blank"
