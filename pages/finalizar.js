@@ -4,16 +4,20 @@ import { useCarrinho } from "../context/CarrinhoContext";
 export default function Finalizar() {
   const { itens = [] } = useCarrinho();
 
+  // usa um nome só (carrinho) no resto do código
+  const carrinho = Array.isArray(itens) ? itens : [];
+
   const total = carrinho.reduce(
-    (soma, item) => soma + item.preco * item.qtd,
+    (soma, item) => soma + (Number(item.preco) || 0) * (Number(item.qtd) || 0),
     0
   );
 
   const mensagem = carrinho
-    .map(
-      (item) =>
-        `${item.qtd}x ${item.nome} - R$ ${(item.preco * item.qtd).toFixed(2)}`
-    )
+    .map((item) => {
+      const qtd = Number(item.qtd) || 0;
+      const preco = Number(item.preco) || 0;
+      return `${qtd}x ${item.nome} - R$ ${(preco * qtd).toFixed(2)}`;
+    })
     .join("\n");
 
   const whatsappLink = `https://wa.me/5598999614108?text=${encodeURIComponent(
@@ -30,31 +34,29 @@ export default function Finalizar() {
         </h1>
 
         {carrinho.length === 0 ? (
-          <p className="text-center text-gray-500">
-            Seu carrinho está vazio.
-          </p>
+          <p className="text-center text-gray-500">Seu carrinho está vazio.</p>
         ) : (
           <>
             <ul className="divide-y mb-4">
-              {carrinho.map((item, index) => (
-                <li
-                  key={index}
-                  className="flex justify-between py-3"
-                >
-                  <div>
-                    <p className="font-semibold">
-                      {item.nome}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {item.qtd}x R$ {item.preco.toFixed(2)}
-                    </p>
-                  </div>
+              {carrinho.map((item, index) => {
+                const qtd = Number(item.qtd) || 0;
+                const preco = Number(item.preco) || 0;
 
-                  <p className="font-semibold">
-                    R$ {(item.preco * item.qtd).toFixed(2)}
-                  </p>
-                </li>
-              ))}
+                return (
+                  <li key={index} className="flex justify-between py-3">
+                    <div>
+                      <p className="font-semibold">{item.nome}</p>
+                      <p className="text-sm text-gray-500">
+                        {qtd}x R$ {preco.toFixed(2)}
+                      </p>
+                    </div>
+
+                    <p className="font-semibold">
+                      R$ {(preco * qtd).toFixed(2)}
+                    </p>
+                  </li>
+                );
+              })}
             </ul>
 
             <div className="flex justify-between items-center text-lg font-bold mb-6">
@@ -65,6 +67,7 @@ export default function Finalizar() {
             <a
               href={whatsappLink}
               target="_blank"
+              rel="noreferrer"
               className="block w-full text-center bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold mb-3"
             >
               Finalizar pelo WhatsApp
