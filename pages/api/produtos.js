@@ -1,5 +1,5 @@
 // pages/api/produtos.js
-import { SupabaseAdmin } from "../../lib/supabaseAdmin";
+import { supabaseAdmin } from "../../lib/supabaseAdmin";
 
 function isAdmin(req) {
   const pass = req.headers["x-admin-password"];
@@ -8,7 +8,7 @@ function isAdmin(req) {
 
 export default async function handler(req, res) {
   try {
-    const { supabaseAdmin, envError } = SupabaseAdmin();
+    const { supabaseAdmin, envError } = supabaseAdmin();
     if (envError) return res.status(500).json({ error: envError });
 
     // =========================
