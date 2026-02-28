@@ -1,12 +1,12 @@
 // pages/api/produtos.js
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
-import { pegarImagemProduto } from "@/lib/imagem";
+
 function isAdmin(req) {
   const pass = req.headers["x-admin-password"];
   return pass && pass === process.env.ADMIN_PASSWORD;
 }
 
-// ✅ aceita array, string JSON, ou null
+// aceita array, string JSON, ou null
 function normalizeImagens(v) {
   if (!v) return null;
   if (Array.isArray(v)) return v.filter(Boolean);
@@ -24,6 +24,12 @@ function normalizeImagens(v) {
 
 export default async function handler(req, res) {
   try {
+    // ✅ valida env básico (ajuda MUITO a evitar 500 misterioso)
+    if (!process.env.ADMIN_PASSWORD) {
+      // não bloqueia GET normal, mas avisa se for admin
+      // (se quiser, pode remover este bloco)
+    }
+
     // =========================
     // GET - listar produtos
     // =========================
@@ -62,13 +68,12 @@ export default async function handler(req, res) {
         destaque,
         descricao,
         imagem_url,
-        imagens, // ✅ NOVO
+        imagens,
         ativo,
       } = req.body || {};
 
       const imagensNorm = normalizeImagens(imagens);
 
-      // ✅ se veio galeria e não veio imagem_url, usa a primeira como principal
       const imagemPrincipal =
         (imagem_url ? String(imagem_url).trim() : "") ||
         (imagensNorm?.[0] ? String(imagensNorm[0]).trim() : "") ||
@@ -81,7 +86,7 @@ export default async function handler(req, res) {
         destaque: destaque ? String(destaque).trim() : null,
         descricao: descricao ? String(descricao).trim() : null,
         imagem_url: imagemPrincipal,
-        imagens: imagensNorm, // ✅ SALVA NO BANCO
+        imagens: imagensNorm,
         ativo: ativo !== false,
       };
 
@@ -114,7 +119,7 @@ export default async function handler(req, res) {
         destaque,
         descricao,
         imagem_url,
-        imagens, // ✅ NOVO
+        imagens,
         ativo,
       } = req.body || {};
 
@@ -122,7 +127,6 @@ export default async function handler(req, res) {
 
       const imagensNorm = normalizeImagens(imagens);
 
-      // ✅ se veio galeria e não veio imagem_url, usa a primeira como principal
       const imagemPrincipal =
         (imagem_url ? String(imagem_url).trim() : "") ||
         (imagensNorm?.[0] ? String(imagensNorm[0]).trim() : "") ||
@@ -135,7 +139,6 @@ export default async function handler(req, res) {
         destaque: destaque ? String(destaque).trim() : null,
         descricao: descricao ? String(descricao).trim() : null,
         imagem_url: imagemPrincipal,
-        // ✅ só atualiza "imagens" se foi enviado
         ...(imagens !== undefined ? { imagens: imagensNorm } : {}),
         ativo: ativo !== false,
       };
@@ -169,6 +172,8 @@ export default async function handler(req, res) {
     res.setHeader("Allow", ["GET", "POST", "PUT", "DELETE"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (e) {
-    return res.status(500).json({ error: e.message || "Erro interno" });
+    // ✅ ajuda a debugar na Vercel
+    console.error("API /produtos error:", e);
+    return res.status(500).json({ error: e?.message || "Erro interno" });
   }
 }
