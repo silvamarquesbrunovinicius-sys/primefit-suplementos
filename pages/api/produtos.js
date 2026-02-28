@@ -2,31 +2,39 @@
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
 
 function isAdmin(req) {
+  // no Node/Vercel os headers chegam em lowercase
   const pass = req.headers["x-admin-password"];
-  return pass && pass === process.env.ADMIN_PASSWORD;
+  return !!pass && pass === process.env.ADMIN_PASSWORD;
 }
 
 export default async function handler(req, res) {
   try {
+    // ✅ resolve 405 por preflight (OPTIONS)
+    if (req.method === "OPTIONS") {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-admin-password");
+      return res.status(200).end();
+    }
+
+    // CORS (não atrapalha nada no mesmo domínio e evita dor de cabeça)
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
     // =========================
     // GET (público ou admin)
     // =========================
     if (req.method === "GET") {
       const adminMode = req.query.admin === "1";
 
-      // Se pediu modo admin, valida senha
       if (adminMode && !isAdmin(req)) {
         return res.status(401).json({ error: "Senha inválida" });
       }
 
       let q = supabaseAdmin
         .from("produtos")
-        .select(
-          "id,nome,preco,categoria,destaque,descricao,ativo,imagem_url,imagens,created_at"
-        )
+        .select("id,nome,preco,categoria,destaque,descricao,ativo,imagem_url,imagens,created_at")
         .order("created_at", { ascending: false });
 
-      // público só vê ativos
       if (!adminMode) q = q.eq("ativo", true);
 
       const { data, error } = await q;
@@ -35,13 +43,13 @@ export default async function handler(req, res) {
       return res.status(200).json(data || []);
     }
 
-    // A partir daqui: só admin (POST/PUT/DELETE)
+    // a partir daqui: admin
     if (!isAdmin(req)) {
       return res.status(401).json({ error: "Senha inválida" });
     }
 
     // =========================
-    // POST (criar produto)
+    // POST (criar)
     // =========================
     if (req.method === "POST") {
       const body = req.body || {};
@@ -51,11 +59,7 @@ export default async function handler(req, res) {
       const categoria = String(body.categoria || "Outro").trim() || "Outro";
 
       if (!nome) return res.status(400).json({ error: "Nome é obrigatório" });
-      if (!preco || preco <= 0)
-        return res.status(400).json({ error: "Preço inválido" });
-
-      // imagem_url pode ser null, mas se você quiser obrigar, descomente:
-      // if (!body.imagem_url) return res.status(400).json({ error: "imagem_url é obrigatório" });
+      if (!preco || preco <= 0) return res.status(400).json({ error: "Preço inválido" });
 
       const payload = {
         nome,
@@ -79,7 +83,7 @@ export default async function handler(req, res) {
     }
 
     // =========================
-    // PUT (editar produto)
+    // PUT (editar) ✅ corrigido
     // =========================
     if (req.method === "PUT") {
       const body = req.body || {};
@@ -92,8 +96,7 @@ export default async function handler(req, res) {
       const categoria = String(body.categoria || "Outro").trim() || "Outro";
 
       if (!nome) return res.status(400).json({ error: "Nome é obrigatório" });
-      if (!preco || preco <= 0)
-        return res.status(400).json({ error: "Preço inválido" });
+      if (!preco || preco <= 0) return res.status(400).json({ error: "Preço inválido" });
 
       const payload = {
         nome,
@@ -106,9 +109,9 @@ export default async function handler(req, res) {
         imagens: Array.isArray(body.imagens) ? body.imagens : null,
       };
 
-      // ✅ O PULO DO GATO:
-      // - filtra por id
-      // - usa maybeSingle pra não estourar "Cannot coerce..."
+      // ✅ EVITA "Cannot coerce the result to a single JSON object"
+      // 1) filtra pelo id
+      // 2) busca 1 resultado (single) e se não achar retorna 404
       const { data, error } = await supabaseAdmin
         .from("produtos")
         .update(payload)
@@ -123,7 +126,7 @@ export default async function handler(req, res) {
     }
 
     // =========================
-    // DELETE (remover produto)
+    // DELETE (remover)
     // =========================
     if (req.method === "DELETE") {
       const id = req.query.id;
@@ -135,7 +138,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    res.setHeader("Allow", ["GET", "POST", "PUT", "DELETE"]);
+    res.setHeader("Allow", ["GET", "POST", "PUT", "DELETE", "OPTIONS"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (e) {
     return res.status(500).json({ error: e?.message || "Erro interno" });
