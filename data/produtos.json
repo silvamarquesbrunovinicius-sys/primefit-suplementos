@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "nome": "Whey Protein 1kg",
+    "preco": 149.90,
+    "imagem": "/produtos/whey.png",
+    "categoria": "Promoções"
+
+  },
+  {
+    "id": 2,
+    "nome": "Creatina 300g",
+    "preco": 89.90,
+    "imagem": "/produtos/creatina-max.png",
+    "categoria": "Promoções"
+  },
+  {
+    "id": 3,
+    "nome": "Pré-treino",
+    "preco": 99.90,
+    "imagem": "/produtos/pre-treino.png",
+    "categoria": "Promoções"
+  }
+]
