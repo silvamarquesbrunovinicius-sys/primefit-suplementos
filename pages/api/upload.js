@@ -1,11 +1,9 @@
 // pages/api/upload.js
 import formidable from "formidable";
 import fs from "fs";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "../../lib/supabaseAdmin";
 
-export const config = {
-  api: { bodyParser: false },
-};
+export const config = { api: { bodyParser: false } };
 
 function isAdmin(req) {
   const pass = req.headers["x-admin-password"];
@@ -29,16 +27,10 @@ function safeBaseName(name = "") {
   return stripExt(name)
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove acentos
-    .replace(/[^a-z0-9-_]+/g, "-")   // troca tudo por -
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9-_]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/(^-|-$)/g, "");
-}
-
-function makeSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return createClient(url, key);
 }
 
 function parseForm(req) {
@@ -52,33 +44,40 @@ function parseForm(req) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  if (!isAdmin(req)) return res.status(401).json({ error: "Unauthorized" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+  if (!isAdmin(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   try {
-    const supabase = makeSupabaseAdmin();
     const { fields, files } = await parseForm(req);
 
     const produtoId = String(fields.produtoId || "novo");
-    const arr = files.files ? (Array.isArray(files.files) ? files.files : [files.files]) : [];
+    const arr = files.files
+      ? Array.isArray(files.files)
+        ? files.files
+        : [files.files]
+      : [];
 
     if (!arr.length) return res.status(400).json({ error: "Nenhum arquivo enviado" });
 
     const publicUrls = [];
 
     for (const f of arr) {
-      const mime = f.mimetype || "";
+      const mime = f.mimetype || "application/octet-stream";
       const ext = getExtFromMime(mime);
 
       const original = f.originalFilename || "imagem";
       const base = safeBaseName(original) || "imagem";
 
-      const fileName = `${Date.now()}-${base}.${ext}`; // ✅ só 1 extensão sempre
+      const fileName = `${Date.now()}-${base}.${ext}`;
       const pathInBucket = `${produtoId}/${fileName}`;
 
       const buffer = fs.readFileSync(f.filepath);
 
-      const { error: upErr } = await supabase.storage
+      const { error: upErr } = await supabaseAdmin.storage
         .from("produtos")
         .upload(pathInBucket, buffer, {
           contentType: mime,
@@ -88,13 +87,16 @@ export default async function handler(req, res) {
 
       if (upErr) throw upErr;
 
-      const { data: pub } = supabase.storage.from("produtos").getPublicUrl(pathInBucket);
+      const { data: pub } = supabaseAdmin.storage
+        .from("produtos")
+        .getPublicUrl(pathInBucket);
+
       publicUrls.push(pub.publicUrl);
     }
 
     return res.status(200).json({ publicUrls });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: e.message || "Erro no upload" });
+    return res.status(500).json({ error: e?.message || "Erro no upload" });
   }
 }
