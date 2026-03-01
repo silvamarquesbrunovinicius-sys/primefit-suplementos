@@ -1,14 +1,9 @@
-import { getSupabaseAdmin } from "../../lib/supabaseAdmin";
+// pages/api/categorias.js
+import { supabaseAdmin } from "../../lib/supabaseAdmin";
 
 function isAdmin(req) {
   const pass = req.headers["x-admin-password"];
   return pass && pass === process.env.ADMIN_PASSWORD;
-}
-
-export default async function handler(req, res) {
-  const { supabaseAdmin, envError } = getSupabaseAdmin();
-  if (envError) return res.status(500).json({ error: envError });
-
 }
 
 function slugify(str = "") {
@@ -21,7 +16,7 @@ function slugify(str = "") {
     .replace(/(^-|-$)+/g, "");
 }
 
-async function garantirCategoriasBase(supabaseAdmin) {
+async function garantirCategoriasBase() {
   // cria "Outro" e "Promoções" se não existirem
   const { data: existentes, error } = await supabaseAdmin
     .from("categorias")
@@ -32,8 +27,7 @@ async function garantirCategoriasBase(supabaseAdmin) {
   const slugs = new Set((existentes || []).map((c) => c.slug));
 
   const paraCriar = [];
-  if (!slugs.has("outro"))
-    paraCriar.push({ nome: "Outro", slug: "outro", ativo: true });
+  if (!slugs.has("outro")) paraCriar.push({ nome: "Outro", slug: "outro", ativo: true });
   if (!slugs.has("promocoes"))
     paraCriar.push({ nome: "Promoções", slug: "promocoes", ativo: true });
 
@@ -50,12 +44,9 @@ function normalizeId(id) {
 
 export default async function handler(req, res) {
   try {
-    const { supabaseAdmin, envError } = SupabaseAdmin();
-    if (envError) return res.status(500).json({ error: envError });
-
     // GET público
     if (req.method === "GET") {
-      await garantirCategoriasBase(supabaseAdmin);
+      await garantirCategoriasBase();
 
       const { data, error } = await supabaseAdmin
         .from("categorias")
@@ -105,9 +96,7 @@ export default async function handler(req, res) {
       if (!cat) return res.status(404).json({ error: "Categoria não encontrada" });
 
       if (cat.slug === "promocoes" || cat.slug === "outro") {
-        return res
-          .status(400)
-          .json({ error: "Essa categoria não pode ser removida." });
+        return res.status(400).json({ error: "Essa categoria não pode ser removida." });
       }
 
       const { error } = await supabaseAdmin.from("categorias").delete().eq("id", id);

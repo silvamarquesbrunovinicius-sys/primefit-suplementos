@@ -14,9 +14,6 @@ function normalizeId(id) {
 
 export default async function handler(req, res) {
   try {
-    
-    if (envError) return res.status(500).json({ error: envError });
-
     // =========================
     // GET (público ou admin)
     // =========================
