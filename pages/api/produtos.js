@@ -1,5 +1,5 @@
 // pages/api/produtos.js
-import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { getSupabaseAdmin } from "../../lib/supabaseAdmin";
 
 function isAdmin(req) {
   const pass = req.headers["x-admin-password"];
@@ -8,6 +8,9 @@ function isAdmin(req) {
 
 export default async function handler(req, res) {
   try {
+    const { supabaseAdmin, envError } = getSupabaseAdmin();
+    if (envError) return res.status(500).json({ error: envError });
+
     // =========================
     // GET (público ou admin)
     // =========================
@@ -20,9 +23,7 @@ export default async function handler(req, res) {
 
       let q = supabaseAdmin
         .from("produtos")
-        .select(
-          "id,nome,preco,categoria,destaque,descricao,ativo,imagem_url,imagens,created_at"
-        )
+        .select("id,nome,preco,categoria,destaque,descricao,ativo,imagem_url,imagens,created_at")
         .order("created_at", { ascending: false });
 
       if (!adminMode) q = q.eq("ativo", true);
@@ -49,8 +50,7 @@ export default async function handler(req, res) {
       const categoria = String(body.categoria || "Outro").trim() || "Outro";
 
       if (!nome) return res.status(400).json({ error: "Nome é obrigatório" });
-      if (!preco || preco <= 0)
-        return res.status(400).json({ error: "Preço inválido" });
+      if (!preco || preco <= 0) return res.status(400).json({ error: "Preço inválido" });
 
       const payload = {
         nome,
@@ -80,16 +80,14 @@ export default async function handler(req, res) {
       const body = req.body || {};
       const id = body.id;
 
-      if (!id)
-        return res.status(400).json({ error: "ID do produto é obrigatório" });
+      if (!id) return res.status(400).json({ error: "ID do produto é obrigatório" });
 
       const nome = String(body.nome || "").trim();
       const preco = Number(String(body.preco || "").replace(",", "."));
       const categoria = String(body.categoria || "Outro").trim() || "Outro";
 
       if (!nome) return res.status(400).json({ error: "Nome é obrigatório" });
-      if (!preco || preco <= 0)
-        return res.status(400).json({ error: "Preço inválido" });
+      if (!preco || preco <= 0) return res.status(400).json({ error: "Preço inválido" });
 
       const payload = {
         nome,
@@ -102,6 +100,7 @@ export default async function handler(req, res) {
         imagens: Array.isArray(body.imagens) ? body.imagens : null,
       };
 
+      // ✅ evita "Cannot coerce the result..."
       const { data, error } = await supabaseAdmin
         .from("produtos")
         .update(payload)
