@@ -1,5 +1,5 @@
 // pages/api/produtos.js
-import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { supabaseAdmin as getSupabaseAdmin } from "../../lib/supabaseAdmin";
 
 function isAdmin(req) {
   const pass = req.headers["x-admin-password"];
@@ -8,6 +8,10 @@ function isAdmin(req) {
 
 export default async function handler(req, res) {
   try {
+    // ✅ pega o client de forma segura (sem quebrar build)
+    const { supabaseAdmin, envError } = getSupabaseAdmin();
+    if (envError) return res.status(500).json({ error: envError });
+
     // =========================
     // GET (público ou admin)
     // =========================
