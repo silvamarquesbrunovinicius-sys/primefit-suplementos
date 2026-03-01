@@ -393,7 +393,7 @@ export default function Admin() {
         method,
         headers: {
           "Content-Type": "application/json",
-          "x-admin-password": "primefit123",
+          "x-admin-password": senha,
         },
         body: JSON.stringify(payload),
       });

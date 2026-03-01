@@ -1,9 +1,14 @@
-// pages/api/categorias.js
-import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { getSupabaseAdmin } from "../../lib/supabaseAdmin";
 
 function isAdmin(req) {
   const pass = req.headers["x-admin-password"];
   return pass && pass === process.env.ADMIN_PASSWORD;
+}
+
+export default async function handler(req, res) {
+  const { supabaseAdmin, envError } = getSupabaseAdmin();
+  if (envError) return res.status(500).json({ error: envError });
+
 }
 
 function slugify(str = "") {
@@ -16,29 +21,41 @@ function slugify(str = "") {
     .replace(/(^-|-$)+/g, "");
 }
 
-async function garantirCategoriasBase() {
+async function garantirCategoriasBase(supabaseAdmin) {
   // cria "Outro" e "Promoções" se não existirem
-  const { data: existentes } = await supabaseAdmin
+  const { data: existentes, error } = await supabaseAdmin
     .from("categorias")
     .select("slug");
+
+  if (error) throw new Error(error.message);
 
   const slugs = new Set((existentes || []).map((c) => c.slug));
 
   const paraCriar = [];
-  if (!slugs.has("outro")) paraCriar.push({ nome: "Outro", slug: "outro", ativo: true });
-  if (!slugs.has("promocoes")) paraCriar.push({ nome: "Promoções", slug: "promocoes", ativo: true });
+  if (!slugs.has("outro"))
+    paraCriar.push({ nome: "Outro", slug: "outro", ativo: true });
+  if (!slugs.has("promocoes"))
+    paraCriar.push({ nome: "Promoções", slug: "promocoes", ativo: true });
 
   if (paraCriar.length) {
-    await supabaseAdmin.from("categorias").insert(paraCriar);
+    const { error: e2 } = await supabaseAdmin.from("categorias").insert(paraCriar);
+    if (e2) throw new Error(e2.message);
   }
+}
+
+function normalizeId(id) {
+  if (typeof id === "string" && /^\d+$/.test(id)) return Number(id);
+  return id;
 }
 
 export default async function handler(req, res) {
   try {
+    const { supabaseAdmin, envError } = SupabaseAdmin();
+    if (envError) return res.status(500).json({ error: envError });
+
     // GET público
     if (req.method === "GET") {
-      // ✅ garante base antes de listar
-      await garantirCategoriasBase();
+      await garantirCategoriasBase(supabaseAdmin);
 
       const { data, error } = await supabaseAdmin
         .from("categorias")
@@ -75,17 +92,22 @@ export default async function handler(req, res) {
     if (req.method === "DELETE") {
       if (!isAdmin(req)) return res.status(401).json({ error: "Senha inválida" });
 
-      const id = req.query.id;
+      const id = normalizeId(req.query.id);
       if (!id) return res.status(400).json({ error: "ID é obrigatório" });
 
-      const { data: cat } = await supabaseAdmin
+      const { data: cat, error: e1 } = await supabaseAdmin
         .from("categorias")
         .select("slug")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
-      if (cat?.slug === "promocoes" || cat?.slug === "outro") {
-        return res.status(400).json({ error: "Essa categoria não pode ser removida." });
+      if (e1) return res.status(400).json({ error: e1.message });
+      if (!cat) return res.status(404).json({ error: "Categoria não encontrada" });
+
+      if (cat.slug === "promocoes" || cat.slug === "outro") {
+        return res
+          .status(400)
+          .json({ error: "Essa categoria não pode ser removida." });
       }
 
       const { error } = await supabaseAdmin.from("categorias").delete().eq("id", id);
@@ -95,7 +117,7 @@ export default async function handler(req, res) {
     }
 
     res.setHeader("Allow", ["GET", "POST", "DELETE"]);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   } catch (e) {
     return res.status(500).json({ error: e?.message || "Erro interno" });
   }
