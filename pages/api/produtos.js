@@ -14,7 +14,7 @@ function normalizeId(id) {
 
 export default async function handler(req, res) {
   try {
-
+    
     const { supabaseAdmin, envError } = getSupabaseAdmin();
     if (envError) return res.status(500).json({ error: envError });
     // =========================
