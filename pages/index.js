@@ -169,41 +169,47 @@ export default function Home() {
     <div className="min-h-screen bg-black text-white">
       {/* HEADER - igual antes */}
       <header className="border-b border-yellow-400">
-        <div className="max-w-7xl mx-auto px-4 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src="/logo.png" alt="PrimeFit Suplementos" className="h-14 sm:h-16" />
-            <span className="font-black tracking-widest text-yellow-400 text-lg sm:text-2xl">
-              PRIMEFIT SUPLEMENTOS
-            </span>
-          </div>
+  <div className="max-w-7xl mx-auto px-4 py-5 flex flex-col md:flex-row md:items-center md:justify-between">
 
-          <nav className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="px-4 py-2 rounded-full border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition text-sm font-semibold"
-            >
-              Início
-            </Link>
+    {/* Logo + Nome */}
+    <div className="flex items-center gap-4 justify-center md:justify-start">
+      <img
+        src="/logo.png"
+        alt="PrimeFit Suplementos"
+        className="h-12 sm:h-14"
+      />
+      <span className="font-black tracking-widest text-yellow-400 text-base sm:text-xl text-center md:text-left">
+        PRIMEFIT SUPLEMENTOS
+      </span>
+    </div>
 
-            <Link
-              href="/produtos"
-              className="px-4 py-2 rounded-full border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition text-sm font-semibold"
-            >
-              Produtos
-            </Link>
+    {/* Menu */}
+    <nav className="flex flex-wrap items-center justify-center gap-3 mt-4 md:mt-0">
+      <Link
+        href="/"
+        className="px-4 py-2 rounded-full border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition text-sm font-semibold"
+      >
+        Início
+      </Link>
 
-            <CartButton />
+      <Link
+        href="/produtos"
+        className="px-4 py-2 rounded-full border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition text-sm font-semibold"
+      >
+        Produtos
+      </Link>
 
-            <Link
-              href="/admin"
-              className="px-4 py-2 rounded-full bg-yellow-400 text-black hover:bg-yellow-300 transition text-sm font-bold"
-            >
-              Área do vendedor
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <CartButton />
 
+      <Link
+        href="/admin"
+        className="px-4 py-2 rounded-full bg-yellow-400 text-black hover:bg-yellow-300 transition text-sm font-bold"
+      >
+        Área do vendedor
+      </Link>
+    </nav>
+  </div>
+</header>
       {/* CARROSSEL */}
       <section className="max-w-7xl mx-auto px-4 py-6">
         <div className="relative rounded-2xl overflow-hidden border border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.15)] bg-black">
