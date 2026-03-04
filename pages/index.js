@@ -166,7 +166,7 @@ export default function Home() {
       : CATEGORIAS_FALLBACK;
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-dvh bg-black text-white">
       {/* HEADER - igual antes */}
       <header className="border-b border-yellow-400">
   <div className="max-w-7xl mx-auto px-4 py-5 flex flex-col md:flex-row md:items-center md:justify-between">
