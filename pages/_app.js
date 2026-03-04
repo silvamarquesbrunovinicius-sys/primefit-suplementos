@@ -12,7 +12,7 @@ export default function App({ Component, pageProps }) {
   return (
     <CarrinhoProvider>
       <ToastGlobal />
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="main-container">
         <Component {...pageProps} />
       </div>
     </CarrinhoProvider>
