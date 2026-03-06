@@ -61,39 +61,37 @@ export default function ProdutoDetalhe() {
         const data = await r.json();
 
         if (!r.ok) throw new Error(data?.error || "Erro ao buscar produtos");
-
         const lista = (Array.isArray(data) ? data : []).map((p) => {
-          const imagensArr = parseImagens(p.imagens);
-          const imagemPrincipal =
-            p.imagem_url || p.imagem || p.image || "/produtos/whey.png";
+  const imagensArr = parseImagens(p.imagens);
+  const imagemPrincipal =
+    p.imagem_url || p.imagem || p.image || "/produtos/whey.png";
 
-          const galeria =
-            imagensArr.length > 0 ? imagensArr : imagemPrincipal ? [imagemPrincipal] : [];
+  const galeria =
+    imagensArr.length > 0 ? imagensArr : imagemPrincipal ? [imagemPrincipal] : [];
 
-          return {
-            id: p.id,
-            nome: p.nome ?? "Produto",
-            preco: Number(p.preco ?? 0),
+  return {
+    id: p.id,
+    nome: p.nome ?? "Produto",
+    preco: Number(p.preco ?? 0),
+    variacoes: Array.isArray(p.variacoes) ? p.variacoes : [],
 
-            // ✅ IMPORTANTE: manter imagem_url e também imagem (para não quebrar layout)
-            imagem_url: p.imagem_url || null,
-            imagem: imagemPrincipal,
+    imagem_url: p.imagem_url || null,
+    imagem: imagemPrincipal,
 
-            // ✅ galeria
-            imagens: galeria,
+    imagens: galeria,
 
-            marca: p.marca || "PrimeFit",
-            categoria: p.categoria || "Suplementos",
-            unidade: p.unidade || "Unidade",
-            condicao: p.condicao || "Novo",
-            destaque: p.destaque || "",
-            descricao: p.descricao || "",
-            descricaoLonga: p.descricaoLonga || "",
-            sabores:
-              Array.isArray(p.sabores) && p.sabores.length ? p.sabores : ["Padrão"],
-            ativo: p.ativo !== false,
-          };
-        });
+    marca: p.marca || "PrimeFit",
+    categoria: p.categoria || "Suplementos",
+    unidade: p.unidade || "Unidade",
+    condicao: p.condicao || "Novo",
+    destaque: p.destaque || "",
+    descricao: p.descricao || "",
+    descricaoLonga: p.descricaoLonga || "",
+    sabores:
+      Array.isArray(p.sabores) && p.sabores.length ? p.sabores : [],
+    ativo: p.ativo !== false,
+  };
+});
 
         setProdutos(lista);
       } catch (e) {
@@ -106,9 +104,17 @@ export default function ProdutoDetalhe() {
   }, [id]);
 
   const produto = useMemo(() => {
+    
     if (!id) return null;
     return produtos.find((p) => String(p.id) === String(id)) || null;
   }, [id, produtos]);
+  const variacoes = produto?.variacoes || [];
+
+  const sabores =
+  variacoes.find((v) => v.tipo === "Sabor")?.opcoes || [];
+
+  const tamanhos =
+  variacoes.find((v) => v.tipo === "Tamanho")?.opcoes || [];
 
   // ✅ reset quando trocar produto
   useEffect(() => {
@@ -127,7 +133,7 @@ export default function ProdutoDetalhe() {
     const msg =
       `Olá! Gostaria de fazer um pedido:\n\n` +
       `Produto: ${produto.nome}\n` +
-      `Sabor: ${sabor}\n` +
+      (produto.sabores?.length ? `Sabor: ${sabor}\n` : "") +
       `Quantidade: ${qtd}\n` +
       `Valor unitário: ${brl(precoNumero)}\n` +
       `Total: ${brl(total)}\n\n` +
@@ -288,25 +294,27 @@ export default function ProdutoDetalhe() {
             <div className="mt-5 text-yellow-400 text-3xl font-black">{brl(precoNumero)}</div>
 
             {/* Sabor */}
-            <div className="mt-6">
-              <p className="text-gray-300 font-semibold text-sm mb-2">Sabor</p>
-              <div className="flex flex-wrap gap-2">
-                {(produto.sabores || ["Padrão"]).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSabor(s)}
-                    className={`px-3 py-1 rounded-full text-sm font-bold border transition ${
-                      sabor === s
-                        ? "bg-yellow-400 text-black border-yellow-400"
-                        : "border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
-                    }`}
-                    type="button"
-                  >
-                    {s}
-                  </button>
-                ))}
+            {produto.sabores && produto.sabores.length > 0 && (
+              <div className="mt-6">
+                <p className="text-gray-300 font-semibold text-sm mb-2">Sabor</p>
+                <div className="flex flex-wrap gap-2">
+                  {produto.sabores.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSabor(s)}
+                      className={`px-3 py-1 rounded-full text-sm font-bold border transition ${
+                        sabor === s
+                          ? "bg-yellow-400 text-black border-yellow-400"
+                          : "border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
+                      }`}
+                      type="button"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Quantidade */}
             <div className="mt-6 flex items-center gap-3">
@@ -385,7 +393,47 @@ export default function ProdutoDetalhe() {
             <p className="mt-3 text-gray-300">Produto sem descrição detalhada.</p>
           )}
         </section>
+          {sabores.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <b>Sabores disponíveis:</b>
 
+            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              {sabores.map((s) => (
+                <span
+                  key={s}
+                  style={{
+                    padding: "6px 12px",
+                    border: "1px solid #facc15",
+                    borderRadius: 6,
+                  }}
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tamanhos.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <b>Tamanhos disponíveis:</b>
+
+          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+            {tamanhos.map((t) => (
+              <span
+                key={t}
+                style={{
+                  padding: "6px 12px",
+                  border: "1px solid #facc15",
+                  borderRadius: 6,
+                }}
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
         {/* Sugestões */}
         <section className="mt-10">
           <h3 className="text-yellow-400 font-black text-xl">Você também pode gostar</h3>

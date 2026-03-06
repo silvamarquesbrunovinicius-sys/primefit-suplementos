@@ -73,9 +73,12 @@ export default function Admin() {
     ativo: true,
     imagem_url: "",
     imagens: [],
+    variacoes:[],
   });
 
   const modoEdicao = useMemo(() => !!form.id, [form.id]);
+  const [saboresSelecionados, setSaboresSelecionados] = useState([]);
+  const [tamanhosSelecionados, setTamanhosSelecionados] = useState([]);
 
   // ===== API =====
   async function carregarProdutos(pass = senha) {
@@ -200,6 +203,18 @@ export default function Admin() {
   }
 
   function editarProduto(p) {
+
+      if (Array.isArray(p.variacoes)) {
+        const sabores = p.variacoes.find(v => v.tipo === "Sabor");
+        const tamanhos = p.variacoes.find(v => v.tipo === "Tamanho");
+
+        setSaboresSelecionados(sabores?.opcoes || []);
+        setTamanhosSelecionados(tamanhos?.opcoes || []);
+      } else {
+        setSaboresSelecionados([]);
+        setTamanhosSelecionados([]);
+      }
+
     const galeria = Array.isArray(p.imagens) ? p.imagens.filter(Boolean) : [];
     const principal = p.imagem_url ? [p.imagem_url] : [];
     const urls = [...new Set([...principal, ...galeria])]
@@ -331,96 +346,116 @@ export default function Admin() {
     }
   }
 
-  async function adicionarOuSalvar(e) {
-    e.preventDefault();
 
-    const nome = String(form.nome || "").trim();
-    const preco = Number(String(form.preco || "").replace(",", "."));
+async function adicionarOuSalvar(e) {
+  e.preventDefault();
 
-    if (!nome) return alert("Informe o nome do produto.");
-    if (!preco || preco <= 0) return alert("Informe um preço válido.");
+  const nome = String(form.nome || "").trim();
+  const preco = Number(String(form.preco || "").replace(",", "."));
 
-    const criando = !form.id;
-    if (criando && imagensUI.length === 0) {
-      return alert("Selecione pelo menos 1 imagem antes de salvar.");
-    }
+  if (!nome) return alert("Informe o nome do produto.");
+  if (!preco || preco <= 0) return alert("Informe um preço válido.");
 
-    try {
-      setLoading(true);
-
-      // 1) arquivos novos na ordem atual
-      const novosOrdenados = imagensUI
-        .filter((i) => i.isNew && i.file)
-        .map((i) => i.file);
-
-      // 2) upload só dos novos
-      const { publicUrls: urlsNovas } = await uploadImagensOrdenadas(
-        form.id || "novo",
-        novosOrdenados
-      );
-
-      // 3) monta URLs finais respeitando a ordem da UI
-      let idxNova = 0;
-      const urlsFinais = imagensUI
-        .map((item) => {
-          if (item.isNew) {
-            const u = urlsNovas[idxNova++];
-            return u || null;
-          }
-          return item.src;
-        })
-        .map((u) => corrigirUrlImagem(u))
-        .filter(Boolean);
-
-      const imagemPrincipalFinal =
-        urlsFinais[0] || corrigirUrlImagem(form.imagem_url) || null;
-
-      const payload = {
-        id: form.id,
-        nome,
-        preco,
-        categoria: form.categoria || "Outro",
-        destaque: (form.destaque || "").trim() || null,
-        descricao: (form.descricao || "").trim() || null,
-        ativo: form.ativo !== false,
-        imagem_url: imagemPrincipalFinal,
-        imagens: urlsFinais.length ? urlsFinais : null,
-      };
-
-      const method = form.id ? "PUT" : "POST";
-
-      const r = await fetch("/api/produtos", {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-password": senha,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await r.json();
-      if (!r.ok) throw new Error(data?.error || "Erro ao salvar");
-
-      const itemSalvo = {
-        ...data,
-        imagem_url: corrigirUrlImagem(data.imagem_url || ""),
-        imagens: Array.isArray(data.imagens)
-          ? data.imagens.map((u) => corrigirUrlImagem(u)).filter(Boolean)
-          : [],
-      };
-
-      setProdutos((prev) => {
-        if (form.id) return prev.map((p) => (p.id === itemSalvo.id ? itemSalvo : p));
-        return [itemSalvo, ...prev];
-      });
-
-      limparFormulario();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const criando = !form.id;
+  if (criando && imagensUI.length === 0) {
+    return alert("Selecione pelo menos 1 imagem antes de salvar.");
   }
+
+  try {
+    setLoading(true);
+
+    // 1) arquivos novos na ordem atual
+    const novosOrdenados = imagensUI
+      .filter((i) => i.isNew && i.file)
+      .map((i) => i.file);
+
+    // 2) upload só dos novos
+    const { publicUrls: urlsNovas } = await uploadImagensOrdenadas(
+      form.id || "novo",
+      novosOrdenados
+    );
+
+    // 3) monta URLs finais respeitando a ordem da UI
+    let idxNova = 0;
+    const urlsFinais = imagensUI
+      .map((item) => {
+        if (item.isNew) {
+          const u = urlsNovas[idxNova++];
+          return u || null;
+        }
+        return item.src;
+      })
+      .map((u) => corrigirUrlImagem(u))
+      .filter(Boolean);
+
+    const imagemPrincipalFinal =
+      urlsFinais[0] || corrigirUrlImagem(form.imagem_url) || null;
+
+    // 🔥 MONTA VARIAÇÕES DINAMICAMENTE
+    const variacoes = [];
+
+    if (saboresSelecionados.length > 0) {
+      variacoes.push({
+        tipo: "Sabor",
+        opcoes: saboresSelecionados,
+      });
+    }
+
+    if (tamanhosSelecionados.length > 0) {
+      variacoes.push({
+        tipo: "Tamanho",
+        opcoes: tamanhosSelecionados,
+      });
+    }
+
+    const payload = {
+      id: form.id,
+      nome,
+      preco,
+      categoria: form.categoria || "Outro",
+      destaque: (form.destaque || "").trim() || null,
+      descricao: (form.descricao || "").trim() || null,
+      ativo: form.ativo !== false,
+      imagem_url: imagemPrincipalFinal,
+      imagens: urlsFinais.length ? urlsFinais : null,
+      variacoes: variacoes.length ? variacoes : [], // 👈 ADICIONADO
+    };
+
+    const method = form.id ? "PUT" : "POST";
+
+    const r = await fetch("/api/produtos", {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-password": senha,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await r.json();
+    if (!r.ok) throw new Error(data?.error || "Erro ao salvar");
+
+    const itemSalvo = {
+      ...data,
+      imagem_url: corrigirUrlImagem(data.imagem_url || ""),
+      imagens: Array.isArray(data.imagens)
+        ? data.imagens.map((u) => corrigirUrlImagem(u)).filter(Boolean)
+        : [],
+    };
+
+    setProdutos((prev) => {
+      if (form.id)
+        return prev.map((p) => (p.id === itemSalvo.id ? itemSalvo : p));
+      return [itemSalvo, ...prev];
+    });
+
+    limparFormulario();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setLoading(false);
+  }
+}
 
   // ===== LOGIN =====
   if (!autorizado) {
@@ -737,6 +772,65 @@ export default function Admin() {
               <span className="text-sm text-gray-300">Produto ativo (aparece no site)</span>
             </div>
           </div>
+          {/* ================= VARIAÇÕES ================= */}
+
+<div style={{ marginTop: "20px" }}>
+  <label>Sabores disponíveis:</label>
+  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
+    {["Chocolate", "Morango", "Baunilha", "Cookies", "Neutro"].map((sabor) => (
+      <button
+        type="button"
+        key={sabor}
+        onClick={() => {
+          if (saboresSelecionados.includes(sabor)) {
+            setSaboresSelecionados(saboresSelecionados.filter((s) => s !== sabor));
+          } else {
+            setSaboresSelecionados([...saboresSelecionados, sabor]);
+          }
+        }}
+        style={{
+          padding: "5px 10px",
+          borderRadius: "20px",
+          border: "1px solid #facc15",
+          background: saboresSelecionados.includes(sabor) ? "#facc15" : "transparent",
+          color: saboresSelecionados.includes(sabor) ? "#000" : "#facc15",
+          cursor: "pointer",
+        }}
+      >
+        {sabor}
+      </button>
+    ))}
+  </div>
+</div>
+
+<div style={{ marginTop: "20px" }}>
+  <label>Tamanhos disponíveis:</label>
+  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
+    {["P", "M", "G", "GG"].map((tam) => (
+      <button
+        type="button"
+        key={tam}
+        onClick={() => {
+          if (tamanhosSelecionados.includes(tam)) {
+            setTamanhosSelecionados(tamanhosSelecionados.filter((t) => t !== tam));
+          } else {
+            setTamanhosSelecionados([...tamanhosSelecionados, tam]);
+          }
+        }}
+        style={{
+          padding: "5px 10px",
+          borderRadius: "20px",
+          border: "1px solid #facc15",
+          background: tamanhosSelecionados.includes(tam) ? "#facc15" : "transparent",
+          color: tamanhosSelecionados.includes(tam) ? "#000" : "#facc15",
+          cursor: "pointer",
+        }}
+      >
+        {tam}
+      </button>
+    ))}
+  </div>
+</div>
 
           <div className="mt-5 flex gap-3 flex-wrap">
             <button

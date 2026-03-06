@@ -71,8 +71,8 @@ export default async function handler(req, res) {
         ativo: body.ativo !== false,
         imagem_url: body.imagem_url ? String(body.imagem_url).trim() : null,
         imagens: Array.isArray(body.imagens) ? body.imagens : null,
+        variacoes: Array.isArray(body.variacoes) ? body.variacoes : null,
       };
-
       const { data, error } = await supabaseAdmin
         .from("produtos")
         .insert(payload)
@@ -112,6 +112,7 @@ export default async function handler(req, res) {
         ativo: body.ativo !== false,
         imagem_url: body.imagem_url ? String(body.imagem_url).trim() : null,
         imagens: Array.isArray(body.imagens) ? body.imagens : null,
+        variacoes: Array.isArray(body.variacoes) ? body.variacoes : null,
       };
 
       const { data, error } = await supabaseAdmin
