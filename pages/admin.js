@@ -77,9 +77,10 @@ export default function Admin() {
   });
 
   const modoEdicao = useMemo(() => !!form.id, [form.id]);
+  const [sabores, setSabores] = useState([]);
+  const [novoSabor, setNovoSabor] = useState("");
   const [saboresSelecionados, setSaboresSelecionados] = useState([]);
   const [tamanhosSelecionados, setTamanhosSelecionados] = useState([]);
-
   // ===== API =====
   async function carregarProdutos(pass = senha) {
     setLoading(true);
@@ -130,11 +131,25 @@ export default function Admin() {
       setForm((f) => ({ ...f, categoria: "Outro" }));
     }
   }
+  
+async function carregarSabores() {
+  try {
+    const r = await fetch("/api/sabores");
+    const data = await r.json();
 
+    if (!r.ok) throw new Error(data?.error || "Erro ao carregar sabores");
+
+    setSabores(Array.isArray(data) ? data : []);
+  } catch (err) {
+    console.error(err);
+    setSabores([]);
+  }
+}
   useEffect(() => {
     if (!autorizado) return;
     carregarProdutos();
     carregarCategorias();
+    carregarSabores();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autorizado]);
 
@@ -178,37 +193,41 @@ export default function Admin() {
   }
 
   function limparFormulario() {
-    // limpa blobs pra evitar leak
-    imagensUI.forEach((it) => {
-      if (it.isNew && it.src?.startsWith("blob:")) {
-        try {
-          URL.revokeObjectURL(it.src);
-        } catch {}
-      }
-    });
 
-    setForm({
-      id: null,
-      nome: "",
-      preco: "",
-      destaque: "",
-      categoria: "Outro",
-      descricao: "",
-      ativo: true,
-      imagem_url: "",
-      imagens: [],
-    });
+  imagensUI.forEach((it) => {
+    if (it.isNew && it.src?.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(it.src);
+      } catch {}
+    }
+  });
 
-    setImagensUI([]);
-  }
+  setForm({
+    id: null,
+    nome: "",
+    preco: "",
+    destaque: "",
+    categoria: "Outro",
+    descricao: "",
+    ativo: true,
+    imagem_url: "",
+    imagens: [],
+    variacoes: [],
+  });
+
+  setImagensUI([]);
+
+  setSaboresSelecionados([]);
+  setTamanhosSelecionados([]);
+}
 
   function editarProduto(p) {
 
       if (Array.isArray(p.variacoes)) {
-        const sabores = p.variacoes.find(v => v.tipo === "Sabor");
+        const saboresVar = p.variacoes.find(v => v.tipo === "Sabor");
         const tamanhos = p.variacoes.find(v => v.tipo === "Tamanho");
 
-        setSaboresSelecionados(sabores?.opcoes || []);
+        setSaboresSelecionados(saboresVar?.opcoes || []);
         setTamanhosSelecionados(tamanhos?.opcoes || []);
       } else {
         setSaboresSelecionados([]);
@@ -394,19 +413,19 @@ async function adicionarOuSalvar(e) {
     // 🔥 MONTA VARIAÇÕES DINAMICAMENTE
     const variacoes = [];
 
-    if (saboresSelecionados.length > 0) {
-      variacoes.push({
-        tipo: "Sabor",
-        opcoes: saboresSelecionados,
-      });
-    }
+if (Array.isArray(saboresSelecionados) && saboresSelecionados.length) {
+  variacoes.push({
+    tipo: "Sabor",
+    opcoes: saboresSelecionados
+  });
+}
 
-    if (tamanhosSelecionados.length > 0) {
-      variacoes.push({
-        tipo: "Tamanho",
-        opcoes: tamanhosSelecionados,
-      });
-    }
+if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
+  variacoes.push({
+    tipo: "Tamanho",
+    opcoes: tamanhosSelecionados
+  });
+}
 
     const payload = {
       id: form.id,
@@ -418,7 +437,7 @@ async function adicionarOuSalvar(e) {
       ativo: form.ativo !== false,
       imagem_url: imagemPrincipalFinal,
       imagens: urlsFinais.length ? urlsFinais : null,
-      variacoes: variacoes.length ? variacoes : [], // 👈 ADICIONADO
+      variacoes: variacoes , // 👈 ADICIONADO
     };
 
     const method = form.id ? "PUT" : "POST";
@@ -431,6 +450,7 @@ async function adicionarOuSalvar(e) {
       },
       body: JSON.stringify(payload),
     });
+
 
     const data = await r.json();
     if (!r.ok) throw new Error(data?.error || "Erro ao salvar");
@@ -774,35 +794,120 @@ async function adicionarOuSalvar(e) {
           </div>
           {/* ================= VARIAÇÕES ================= */}
 
-<div style={{ marginTop: "20px" }}>
-  <label>Sabores disponíveis:</label>
-  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
-    {["Chocolate", "Morango", "Baunilha", "Cookies", "Neutro"].map((sabor) => (
-      <button
-        type="button"
-        key={sabor}
-        onClick={() => {
-          if (saboresSelecionados.includes(sabor)) {
-            setSaboresSelecionados(saboresSelecionados.filter((s) => s !== sabor));
-          } else {
-            setSaboresSelecionados([...saboresSelecionados, sabor]);
-          }
-        }}
-        style={{
-          padding: "5px 10px",
-          borderRadius: "20px",
-          border: "1px solid #facc15",
-          background: saboresSelecionados.includes(sabor) ? "#facc15" : "transparent",
-          color: saboresSelecionados.includes(sabor) ? "#000" : "#facc15",
-          cursor: "pointer",
-        }}
-      >
-        {sabor}
-      </button>
-    ))}
-  </div>
+<div style={{ marginTop: 20 }}>
+
+<label style={{fontWeight:"bold"}}>Sabores disponíveis:</label>
+
+{/* adicionar novo sabor */}
+<div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+
+<input
+type="text"
+placeholder="Ex: Chocolate"
+value={novoSabor}
+onChange={(e) => setNovoSabor(e.target.value)}
+style={{
+padding: "8px",
+borderRadius: "8px",
+border: "1px solid #facc15",
+background: "black",
+color: "white"
+}}
+/>
+
+<button
+type="button"
+onClick={async () => {
+
+if (!novoSabor.trim()) return;
+
+try {
+
+const r = await fetch("/api/sabores",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({nome:novoSabor})
+});
+
+const data = await r.json();
+
+if(!r.ok) throw new Error(data?.error || "Erro ao criar sabor");
+
+setSabores((prev)=>[...prev,data]);
+setNovoSabor("");
+
+} catch(err){
+
+alert(err.message)
+
+}
+
+}}
+style={{
+background:"#facc15",
+color:"black",
+padding:"8px 14px",
+borderRadius:"8px",
+fontWeight:"bold"
+}}
+>
+Adicionar
+</button>
+
 </div>
 
+{/* lista de sabores */}
+<div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:15}}>
+
+{Array.isArray(sabores) && sabores.map((sabor)=>{
+
+const ativo = saboresSelecionados.includes(sabor.nome)
+
+return (
+
+<button
+key={sabor.id}
+type="button"
+onClick={()=>{
+
+if(ativo){
+
+setSaboresSelecionados(
+saboresSelecionados.filter(s=>s!==sabor.nome)
+)
+
+}else{
+
+setSaboresSelecionados(
+[...saboresSelecionados,sabor.nome]
+)
+
+}
+
+}}
+style={{
+padding:"6px 12px",
+borderRadius:"20px",
+border:"1px solid #facc15",
+background: ativo ? "#facc15" : "black",
+color: ativo ? "black" : "#facc15",
+cursor:"pointer"
+}}
+>
+
+{sabor.nome}
+
+</button>
+
+)
+
+})}
+
+</div>
+
+</div>
 <div style={{ marginTop: "20px" }}>
   <label>Tamanhos disponíveis:</label>
   <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>

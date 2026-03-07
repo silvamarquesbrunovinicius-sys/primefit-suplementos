@@ -30,8 +30,8 @@ export default async function handler(req, res) {
       let q = supabaseAdmin
         .from("produtos")
         .select(
-          "id,nome,preco,categoria,destaque,descricao,ativo,imagem_url,imagens,created_at"
-        )
+         "id,nome,preco,categoria,destaque,descricao,ativo,imagem_url,imagens,variacoes,created_at"
+       )
         .order("created_at", { ascending: false });
 
       if (!adminMode) q = q.eq("ativo", true);

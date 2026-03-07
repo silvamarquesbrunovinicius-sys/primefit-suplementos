@@ -27,20 +27,25 @@ export function CarrinhoProvider({ children }) {
 
     const qtdAdd = Math.max(1, Number(produto.qtd || 1));
     const saborAdd = produto.sabor ?? "";
+    const tamanhoAdd = produto.tamanho ?? "";
 
     setItens((prev) => {
       const arr = Array.isArray(prev) ? prev : [];
       const idx = arr.findIndex(
-        (p) => String(p.id) === String(id) && String(p.sabor || "") === String(saborAdd)
+        (p) =>
+          String(p.id) === String(id) &&
+          String(p.sabor || "") === String(saborAdd) &&
+          String(p.tamanho || "") === String(tamanhoAdd)
       );
 
       if (idx >= 0) {
         const novo = [...arr];
         novo[idx] = {
-          ...novo[idx],
-          qtd: Number(novo[idx].qtd || 0) + qtdAdd,
-          sabor: saborAdd,
-        };
+        ...novo[idx],
+        qtd: Number(novo[idx].qtd || 0) + qtdAdd,
+        sabor: saborAdd,
+        tamanho: tamanhoAdd,
+      };
         return novo;
       }
 
@@ -53,6 +58,7 @@ export function CarrinhoProvider({ children }) {
           imagem: produto.imagem || produto.imagem_url || "/produtos/whey.png",
           qtd: qtdAdd,
           sabor: saborAdd,
+          tamanho: tamanhoAdd,
         },
       ];
     });
@@ -63,42 +69,48 @@ export function CarrinhoProvider({ children }) {
   // alias (mantém compatibilidade com páginas antigas)
   const adicionarItem = adicionarProduto;
 
-  function alterarQtd(id, novaQtd, sabor = "") {
-    const q = Number(novaQtd || 0);
+  function alterarQtd(id, novaQtd, sabor = "", tamanho = "") {
+  const q = Number(novaQtd || 0);
 
-    setItens((prev) => {
-      const arr = Array.isArray(prev) ? prev : [];
+  setItens((prev) => {
+    const arr = Array.isArray(prev) ? prev : [];
 
-      if (q <= 0) {
-        return arr.filter(
-          (p) =>
-            !(
-              String(p.id) === String(id) &&
-              String(p.sabor || "") === String(sabor || "")
-            )
-        );
-      }
-
-      return arr.map((p) => {
-        const mesmaLinha =
-          String(p.id) === String(id) && String(p.sabor || "") === String(sabor || "");
-        return mesmaLinha ? { ...p, qtd: q } : p;
-      });
-    });
-  }
-
-  function removerItem(id, sabor = "") {
-    setItens((prev) => {
-      const arr = Array.isArray(prev) ? prev : [];
+    if (q <= 0) {
       return arr.filter(
         (p) =>
           !(
             String(p.id) === String(id) &&
-            String(p.sabor || "") === String(sabor || "")
+            String(p.sabor || "") === String(sabor) &&
+            String(p.tamanho || "") === String(tamanho)
           )
       );
+    }
+
+    return arr.map((p) => {
+      const mesmaLinha =
+        String(p.id) === String(id) &&
+        String(p.sabor || "") === String(sabor) &&
+        String(p.tamanho || "") === String(tamanho);
+
+      return mesmaLinha ? { ...p, qtd: q } : p;
     });
-  }
+  });
+}
+
+  function removerItem(id, sabor = "", tamanho = "") {
+  setItens((prev) => {
+    const arr = Array.isArray(prev) ? prev : [];
+
+    return arr.filter(
+      (p) =>
+        !(
+          String(p.id) === String(id) &&
+          String(p.sabor || "") === String(sabor) &&
+          String(p.tamanho || "") === String(tamanho)
+        )
+    );
+  });
+}
 
   function limparCarrinho() {
     setItens([]);

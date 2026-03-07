@@ -42,8 +42,10 @@ export default function ProdutoDetalhe() {
   const [loading, setLoading] = useState(true);
   const [produtos, setProdutos] = useState([]);
 
+  const [tamanho, setTamanho] = useState(null);
+
   const [qtd, setQtd] = useState(1);
-  const [sabor, setSabor] = useState("Padrão");
+  const [sabor, setSabor] = useState(null);
 
   // ✅ galeria
   const [imgAtiva, setImgAtiva] = useState(0);
@@ -87,8 +89,7 @@ export default function ProdutoDetalhe() {
     destaque: p.destaque || "",
     descricao: p.descricao || "",
     descricaoLonga: p.descricaoLonga || "",
-    sabores:
-      Array.isArray(p.sabores) && p.sabores.length ? p.sabores : [],
+    
     ativo: p.ativo !== false,
   };
 });
@@ -110,37 +111,54 @@ export default function ProdutoDetalhe() {
   }, [id, produtos]);
   const variacoes = produto?.variacoes || [];
 
-  const sabores =
-  variacoes.find((v) => v.tipo === "Sabor")?.opcoes || [];
+  const sabores = [
+  ...new Set(
+    variacoes
+      .filter((v) => v.tipo === "Sabor")
+      .flatMap((v) => v.opcoes || [])
+  ),
+];
 
   const tamanhos =
-  variacoes.find((v) => v.tipo === "Tamanho")?.opcoes || [];
+  produto?.variacoes?.find(v => v.tipo === "Tamanho")?.opcoes || [];
+  useEffect(() => {
+  if (!produto) return;
+
+  setQtd(1);
+  setImgAtiva(0);
+
+  const tamanhoInicial =
+    produto?.variacoes?.find(v => v.tipo === "Tamanho")?.opcoes?.[0] || null;
+
+  const saborInicial =
+    produto?.variacoes?.find(v => v.tipo === "Sabor")?.opcoes?.[0] || null;
+
+  setTamanho(tamanhoInicial);
+  setSabor(saborInicial);
+
+}, [produto]);
 
   // ✅ reset quando trocar produto
-  useEffect(() => {
-    if (!produto) return;
-    setQtd(1);
-    setImgAtiva(0);
-    if (produto?.sabores?.length) setSabor(produto.sabores[0]);
-  }, [produto]);
+  
 
   const precoNumero = Number(produto?.preco ?? 0);
   const total = precoNumero * qtd;
 
   const whatsappLink = useMemo(() => {
-    if (!produto) return "#";
+  if (!produto) return "#";
 
-    const msg =
-      `Olá! Gostaria de fazer um pedido:\n\n` +
-      `Produto: ${produto.nome}\n` +
-      (produto.sabores?.length ? `Sabor: ${sabor}\n` : "") +
-      `Quantidade: ${qtd}\n` +
-      `Valor unitário: ${brl(precoNumero)}\n` +
-      `Total: ${brl(total)}\n\n` +
-      `Link do produto: ${typeof window !== "undefined" ? window.location.href : ""}`;
+  const msg =
+    `Olá! Gostaria de fazer um pedido:\n\n` +
+    `Produto: ${produto.nome}\n` +
+    (sabor ? `Sabor: ${sabor}\n` : "") +
+    (tamanho ? `Tamanho: ${tamanho}\n` : "") +
+    `Quantidade: ${qtd}\n` +
+    `Valor unitário: ${brl(precoNumero)}\n` +
+    `Total: ${brl(total)}\n\n` +
+    `Link do produto: ${typeof window !== "undefined" ? window.location.href : ""}`;
 
-    return `https://wa.me/5598999614108?text=${encodeURIComponent(msg)}`;
-  }, [produto, qtd, precoNumero, total, sabor]);
+  return `https://wa.me/5598999614108?text=${encodeURIComponent(msg)}`;
+}, [produto, qtd, precoNumero, total, sabor, tamanho]);
 
   if (!id || loading) {
     return (
@@ -293,29 +311,57 @@ export default function ProdutoDetalhe() {
 
             <div className="mt-5 text-yellow-400 text-3xl font-black">{brl(precoNumero)}</div>
 
-            {/* Sabor */}
-            {produto.sabores && produto.sabores.length > 0 && (
-              <div className="mt-6">
-                <p className="text-gray-300 font-semibold text-sm mb-2">Sabor</p>
-                <div className="flex flex-wrap gap-2">
-                  {produto.sabores.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSabor(s)}
-                      className={`px-3 py-1 rounded-full text-sm font-bold border transition ${
-                        sabor === s
-                          ? "bg-yellow-400 text-black border-yellow-400"
-                          : "border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
-                      }`}
-                      type="button"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {tamanhos.length > 0 && (
+            <div className="mt-6">
+              <p className="text-gray-300 font-semibold text-sm mb-2">
+                Tamanho
+              </p>
 
+              <div className="flex flex-wrap gap-2">
+                {tamanhos.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTamanho(t)}
+                    className={`px-3 py-1 rounded-full text-sm font-bold border transition ${
+                      tamanho === t
+                        ? "bg-yellow-400 text-black border-yellow-400"
+                        : "border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
+                    }`}
+                    type="button"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {sabores.length > 0 && (
+            <div className="mt-6">
+              <p className="text-gray-300 font-semibold text-sm mb-2">
+                Sabor
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {sabores.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setSabor(s)}
+                    className={`px-3 py-1 rounded-full text-sm font-bold border transition ${
+                      sabor === s
+                        ? "bg-yellow-400 text-black border-yellow-400"
+                        : "border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
+                    }`}
+                    type="button"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+           
             {/* Quantidade */}
             <div className="mt-6 flex items-center gap-3">
               <span className="text-gray-300 font-semibold">Quantidade</span>
@@ -353,7 +399,13 @@ export default function ProdutoDetalhe() {
                 onClick={() => {
                   // ✅ animação voando: usa a IMG real da página
                   flyToCart(imgRef.current);
-                  adicionarProduto({ ...produto, preco: precoNumero, qtd, sabor });
+                  adicionarProduto({
+                    ...produto,
+                    preco: precoNumero,
+                    qtd,
+                    sabor: sabor || null,
+                    tamanho: tamanho || null
+                  });
                 }}
                 className="bg-yellow-400 text-black py-3 rounded-xl font-black hover:bg-yellow-300 transition"
                 type="button"
@@ -393,47 +445,7 @@ export default function ProdutoDetalhe() {
             <p className="mt-3 text-gray-300">Produto sem descrição detalhada.</p>
           )}
         </section>
-          {sabores.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <b>Sabores disponíveis:</b>
-
-            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-              {sabores.map((s) => (
-                <span
-                  key={s}
-                  style={{
-                    padding: "6px 12px",
-                    border: "1px solid #facc15",
-                    borderRadius: 6,
-                  }}
-                >
-                  {s}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {tamanhos.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          <b>Tamanhos disponíveis:</b>
-
-          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-            {tamanhos.map((t) => (
-              <span
-                key={t}
-                style={{
-                  padding: "6px 12px",
-                  border: "1px solid #facc15",
-                  borderRadius: 6,
-                }}
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+          
         {/* Sugestões */}
         <section className="mt-10">
           <h3 className="text-yellow-400 font-black text-xl">Você também pode gostar</h3>

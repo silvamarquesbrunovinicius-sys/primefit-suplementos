@@ -31,8 +31,10 @@ export default function Carrinho() {
 
     const linhas = itens.map((item) => {
       const subt = Number(item.preco || 0) * Number(item.qtd || 1);
-      const saborTxt = item.sabor ? ` (${item.sabor})` : "";
-      return `${item.qtd}x ${item.nome}${saborTxt} - ${brl(subt)}`;
+      const saborTxt = item.sabor ? ` | Sabor: ${item.sabor}` : "";
+      const tamanhoTxt = item.tamanho ? ` | Tam: ${item.tamanho}` : "";
+
+      return `${item.qtd}x ${item.nome}${saborTxt}${tamanhoTxt} - ${brl(subt)}`;
     });
 
     return (
@@ -92,7 +94,7 @@ export default function Carrinho() {
 
                 return (
                   <div
-                    key={`${item.id}-${item.sabor || ""}`}
+                    key={`${item.id}-${item.sabor || ""}-${item.tamanho || ""}`}
                     className="bg-[#111] border border-yellow-400 rounded-2xl p-4 flex flex-col sm:flex-row gap-4"
                   >
                     <div className="bg-black border border-yellow-400/50 rounded-xl p-3 w-full sm:w-44 flex items-center justify-center">
@@ -114,6 +116,11 @@ export default function Carrinho() {
                           {item.sabor ? (
                             <p className="text-gray-400 text-sm">Sabor: {item.sabor}</p>
                           ) : null}
+
+                          {item.tamanho ? (
+                            <p className="text-gray-400 text-sm">Tamanho: {item.tamanho}</p>
+                          ) : null}
+                          
                           <p className="text-gray-300 text-sm mt-1">
                             Unitário:{" "}
                             <span className="text-yellow-400 font-bold">
@@ -123,7 +130,7 @@ export default function Carrinho() {
                         </div>
 
                         <button
-                          onClick={() => removerItem(item.id, item.sabor || "")}
+                          onClick={() => removerItem(item.id, item.sabor || "", item.tamanho || "")}
                           className="h-11 px-4 rounded-xl border border-red-500 text-red-300 font-black hover:bg-red-500 hover:text-black transition"
                         >
                           Remover
@@ -137,7 +144,7 @@ export default function Carrinho() {
                           <div className="flex items-center bg-black border border-yellow-400 rounded-xl overflow-hidden">
                             <button
                               onClick={() =>
-                                alterarQtd(item.id, (item.qtd || 1) - 1, item.sabor)
+                                alterarQtd(item.id, (item.qtd || 1) - 1, item.sabor, item.tamanho)
                               }
                               className="w-12 h-11 text-yellow-400 font-black hover:bg-yellow-400 hover:text-black transition"
                               aria-label="Diminuir"
@@ -151,7 +158,7 @@ export default function Carrinho() {
 
                             <button
                               onClick={() =>
-                                alterarQtd(item.id, (item.qtd || 1) + 1, item.sabor)
+                                alterarQtd(item.id, (item.qtd || 1) + 1, item.sabor, item.tamanho)
                               }
                               className="w-12 h-11 text-yellow-400 font-black hover:bg-yellow-400 hover:text-black transition"
                               aria-label="Aumentar"
