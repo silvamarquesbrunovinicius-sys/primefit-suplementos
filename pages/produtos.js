@@ -76,7 +76,11 @@ export default function Produtos() {
           nome: p.nome ?? "Produto",
           preco: Number(p.preco ?? 0),
           imagem: pegarImagemProduto(p),
-          categoria: String(p.categoria || "Outro").trim(),
+          categoria: Array.isArray(p.categorias)
+          ? p.categorias
+          : p.categoria
+          ?[p.categorias]
+          :[],
           destaque: p.destaque || "",
           descricao: p.descricao || "",
           ativo: p.ativo !== false,
@@ -94,7 +98,9 @@ export default function Produtos() {
   const filtrados = useMemo(() => {
     const ativos = listaProdutos.filter((p) => p.ativo !== false);
     if (!cat) return ativos;
-    return ativos.filter((p) => p.categoria === cat);
+    return ativos.filter((p) =>
+  p.categorias?.includes(cat)
+);
   }, [listaProdutos, cat]);
 
   return (
