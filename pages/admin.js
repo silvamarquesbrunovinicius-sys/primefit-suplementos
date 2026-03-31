@@ -207,7 +207,7 @@ async function carregarSabores() {
     nome: "",
     preco: "",
     destaque: "",
-    categorias: "Outro",
+    categorias: ["Outro"],
     descricao: "",
     ativo: true,
     imagem_url: "",
@@ -245,7 +245,7 @@ async function carregarSabores() {
       nome: p.nome || "",
       preco: String(p.preco ?? ""),
       destaque: p.destaque || "",
-      categoria: p.categoria || [p.categorias] || "Outro",
+      categoria: p.categoria || [p.categorias || "Outro"],
       descricao: p.descricao || "",
       ativo: p.ativo !== false,
       imagem_url: corrigirUrlImagem(p.imagem_url || ""),
@@ -431,7 +431,7 @@ if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
       id: form.id,
       nome,
       preco,
-      categoria: form.categorias || "Outro",
+      categoria: form.categorias || ["Outro"],
       destaque: (form.destaque || "").trim() || null,
       descricao: (form.descricao || "").trim() || null,
       ativo: form.ativo !== false,
@@ -603,22 +603,42 @@ if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
             {/* CATEGORIA (BANCO) */}
             <div>
               <label className="text-sm text-gray-300 font-semibold">Categoria</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+            {categorias.map((c) => {
+              const ativo = form.categorias?.includes(c.nome);
 
-              <select
-                multiple
-                value={form.categorias || []}
-                onChange={(e) => {
-                  const values = Array.from(e.target.selectedOptions, (opt) => opt.value);
-                  setForm((f) => ({ ...f, categorias: values }));
-                }}
-                className="w-full mt-1 bg-black border border-yellow-400/60 rounded-xl px-4 py-2 outline-none"
-              >
-                {categorias.map((c) => (
-                  <option key={c.id || c.slug} value={c.nome}>
-                    {c.nome}
-                  </option>
-                ))}
-              </select>
+              return (
+                <button
+                  key={c.id || c.slug}
+                  type="button"
+                  onClick={() => {
+                    setForm((f) => {
+                      const atual = f.categorias || [];
+
+                      if (atual.includes(c.nome)) {
+                        return {
+                          ...f,
+                          categorias: atual.filter((cat) => cat !== c.nome),
+                        };
+                      } else {
+                        return {
+                          ...f,
+                          categorias: [...atual, c.nome],
+                        };
+                      }
+                    });
+                  }}
+                  className={`px-3 py-1 rounded-full border text-sm font-bold transition ${
+                    ativo
+                      ? "bg-yellow-400 text-black border-yellow-400"
+                      : "border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
+                  }`}
+                >
+                  {c.nome}
+                </button>
+              );
+            })}
+          </div>
 
               <div className="mt-3 flex gap-2">
                 <input
@@ -978,9 +998,20 @@ cursor:"pointer"
 
                 <div className="mt-3">
                   <div className="flex flex-wrap gap-2 items-center">
-                    <span className="inline-block border border-yellow-400 text-yellow-400 text-xs font-black px-3 py-1 rounded-full">
-                      {p.categoria || "Outro"}
-                    </span>
+                    {Array.isArray(p.categorias)
+                    ? p.categorias.map((cat) => (
+                        <span
+                          key={cat}
+                          className="inline-block border border-yellow-400 text-yellow-400 text-xs font-black px-3 py-1 rounded-full"
+                        >
+                          {cat}
+                        </span>
+                      ))
+                    : (
+                      <span className="inline-block border border-yellow-400 text-yellow-400 text-xs font-black px-3 py-1 rounded-full">
+                        {p.categoria || "Outro"}
+                      </span>
+                    )}
 
                     {p.destaque ? (
                       <span className="inline-block bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-full">
