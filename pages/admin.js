@@ -68,7 +68,7 @@ export default function Admin() {
     nome: "",
     preco: "",
     destaque: "",
-    categoria: "Outro",
+    categorias: "Outro",
     descricao: "",
     ativo: true,
     imagem_url: "",
@@ -207,7 +207,7 @@ async function carregarSabores() {
     nome: "",
     preco: "",
     destaque: "",
-    categoria: "Outro",
+    categorias: "Outro",
     descricao: "",
     ativo: true,
     imagem_url: "",
@@ -245,7 +245,7 @@ async function carregarSabores() {
       nome: p.nome || "",
       preco: String(p.preco ?? ""),
       destaque: p.destaque || "",
-      categoria: p.categoria || "Outro",
+      categoria: p.categoria || [p.categorias] || "Outro",
       descricao: p.descricao || "",
       ativo: p.ativo !== false,
       imagem_url: corrigirUrlImagem(p.imagem_url || ""),
@@ -431,7 +431,7 @@ if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
       id: form.id,
       nome,
       preco,
-      categoria: form.categoria || "Outro",
+      categoria: form.categorias || "Outro",
       destaque: (form.destaque || "").trim() || null,
       descricao: (form.descricao || "").trim() || null,
       ativo: form.ativo !== false,
@@ -605,9 +605,12 @@ if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
               <label className="text-sm text-gray-300 font-semibold">Categoria</label>
 
               <select
-                name="categoria"
-                value={form.categoria}
-                onChange={onChange}
+                multiple
+                value={form.categorias || []}
+                onChange={(e) => {
+                  const values = Array.from(e.target.selectedOptions, (opt) => opt.value);
+                  setForm((f) => ({ ...f, categorias: values }));
+                }}
                 className="w-full mt-1 bg-black border border-yellow-400/60 rounded-xl px-4 py-2 outline-none"
               >
                 {categorias.map((c) => (
@@ -615,7 +618,6 @@ if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
                     {c.nome}
                   </option>
                 ))}
-                {!categorias.length && <option value="Outro">Outro</option>}
               </select>
 
               <div className="mt-3 flex gap-2">
