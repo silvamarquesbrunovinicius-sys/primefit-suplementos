@@ -30,15 +30,22 @@ export default async function handler(req, res) {
       let q = supabaseAdmin
         .from("produtos")
         .select(
-         "id,nome,preco,categoria,destaque,descricao,ativo,imagem_url,imagens,variacoes,created_at"
-       )
+          "id,nome,preco,categorias,destaque,descricao,ativo,imagem_url,imagens,variacoes,created_at"
+        )
         .order("created_at", { ascending: false });
 
       if (!adminMode) q = q.eq("ativo", true);
 
       const { data, error } = await q;
       if (error) return res.status(400).json({ error: error.message });
+      const normalizado = (data || []).map((p) => ({
+      ...p,
+      categorias: Array.isArray(p.categorias)
+        ? p.categorias
+        : [p.categoria || "Outro"],
+    }));
 
+return res.status(200).json(normalizado);
       return res.status(200).json(data || []);
     }
 
@@ -96,8 +103,9 @@ export default async function handler(req, res) {
 
       const nome = String(body.nome || "").trim();
       const preco = Number(String(body.preco || "").replace(",", "."));
-      const categoria = String(body.categoria || "Outro").trim() || "Outro";
-
+      const categorias = Array.isArray(body.categorias)
+      ? body.categorias
+      : [body.categoria || "Outro"];
       if (!nome) return res.status(400).json({ error: "Nome é obrigatório" });
       if (!preco || preco <= 0) {
         return res.status(400).json({ error: "Preço inválido" });
@@ -106,7 +114,7 @@ export default async function handler(req, res) {
       const payload = {
         nome,
         preco,
-        categoria,
+        categorias,
         destaque: body.destaque ? String(body.destaque).trim() : null,
         descricao: body.descricao ? String(body.descricao).trim() : null,
         ativo: body.ativo !== false,
