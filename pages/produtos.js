@@ -76,11 +76,11 @@ export default function Produtos() {
           nome: p.nome ?? "Produto",
           preco: Number(p.preco ?? 0),
           imagem: pegarImagemProduto(p),
-          categoria: Array.isArray(p.categorias)
+          categorias: Array.isArray(p.categorias)
           ? p.categorias
           : p.categoria
-          ?[p.categorias]
-          :[],
+          ?[p.categoria]
+          :["Outro"],
           destaque: p.destaque || "",
           descricao: p.descricao || "",
           ativo: p.ativo !== false,
@@ -99,9 +99,7 @@ export default function Produtos() {
     const ativos = listaProdutos.filter((p) => p.ativo !== false);
     if (!cat) return ativos;
     return ativos.filter((p) =>
-  Array.isArray(p.categorias)
-    ? p.categorias.includes(cat)
-    : p.categoria === cat // fallback (produtos antigos)
+  p.categorias?.includes(cat)
 );
   }, [listaProdutos, cat]);
 
