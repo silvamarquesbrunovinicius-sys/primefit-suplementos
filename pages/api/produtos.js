@@ -62,8 +62,9 @@ return res.status(200).json(normalizado);
 
       const nome = String(body.nome || "").trim();
       const preco = Number(String(body.preco || "").replace(",", "."));
-      const categoria = String(body.categoria || "Outro").trim() || "Outro";
-
+      const categorias = Array.isArray(body.categorias)
+        ? body.categorias
+        : [body.categoria || "Outro"];
       if (!nome) return res.status(400).json({ error: "Nome é obrigatório" });
       if (!preco || preco <= 0) {
         return res.status(400).json({ error: "Preço inválido" });
@@ -72,7 +73,7 @@ return res.status(200).json(normalizado);
       const payload = {
         nome,
         preco,
-        categoria,
+        categorias,
         destaque: body.destaque ? String(body.destaque).trim() : null,
         descricao: body.descricao ? String(body.descricao).trim() : null,
         ativo: body.ativo !== false,
