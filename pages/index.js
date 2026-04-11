@@ -3,7 +3,7 @@ import Link from "next/link";
 import { corrigirUrlImagem } from "../lib/imagem";
 import CartButton from "../components/CartButton";
 
-/** normaliza texto (acentos/caixa/espaços) */
+
 function normalizarCategoria(v) {
   return String(v || "")
     .trim()
@@ -12,8 +12,12 @@ function normalizarCategoria(v) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function ehPromocao(cat) {
-  return normalizarCategoria(cat) === normalizarCategoria("Promoções");
+function ehPromocao(categorias) {
+  if (!Array.isArray(categorias)) return false;
+
+  return categorias.some(
+    (c) => normalizarCategoria(c) === normalizarCategoria("Promoções")
+  );
 }
 
 const CATEGORIAS_FALLBACK = [
@@ -54,7 +58,9 @@ export default function Home() {
             id: p.id,
             nome: p.nome || "Produto",
             preco: Number(p.preco || 0),
-            categoria: String(p.categoria || "Outro").trim(),
+            categorias: Array.isArray(p.categorias)
+            ? p.categorias
+            : [p.categoria || "Outro"],     
             destaque: p.destaque || "",
             descricao: p.descricao || "",
             ativo: p.ativo !== false,
@@ -159,7 +165,7 @@ export default function Home() {
     setSlideAtivo((s) => (s + 1) % slidesPromocoes.length);
   }
 
-  // ✅ se não veio do banco, usa fallback (igual antes)
+ 
   const categoriasParaMostrar =
     !loadingCategorias && categoriasDB.length > 0
       ? categoriasDB.map((c) => c.nome)
@@ -167,11 +173,11 @@ export default function Home() {
 
   return (
     <div className="min-h-dvh bg-black text-white">
-      {/* HEADER - igual antes */}
+      
       <header className="border-b border-yellow-400">
   <div className="max-w-7xl mx-auto px-4 py-5 flex flex-col md:flex-row md:items-center md:justify-between">
 
-    {/* Logo + Nome */}
+    
     <div className="flex items-center gap-4 justify-center md:justify-start">
       <img
         src="/logo.png"
