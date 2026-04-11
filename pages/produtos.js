@@ -99,7 +99,9 @@ export default function Produtos() {
     const ativos = listaProdutos.filter((p) => p.ativo !== false);
     if (!cat) return ativos;
     return ativos.filter((p) =>
-  p.categorias?.includes(cat)
+  Array.isArray(p.categorias)
+    ? p.categorias.includes(cat)
+    : p.categoria === cat // fallback (produtos antigos)
 );
   }, [listaProdutos, cat]);
 
