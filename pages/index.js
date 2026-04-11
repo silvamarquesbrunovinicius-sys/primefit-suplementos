@@ -13,9 +13,7 @@ function normalizarCategoria(v) {
 }
 
 function ehPromocao(categorias) {
-  if (!Array.isArray(categorias)) return false;
-
-  return categorias.some(
+  return (categorias || []).some(
     (c) => normalizarCategoria(c) === normalizarCategoria("Promoções")
   );
 }
@@ -122,7 +120,7 @@ export default function Home() {
 
   // ✅ Slides do carrossel: só Promoções
   const slidesPromocoes = useMemo(() => {
-    const promos = (listaProdutos || []).filter((p) => ehPromocao(p.categoria));
+    const promos = (listaProdutos || []).filter((p) => ehPromocao(p.categorias));
 
     if (!promos.length) {
       return [
