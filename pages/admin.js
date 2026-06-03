@@ -820,7 +820,7 @@ if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
               <input type="checkbox" name="ativo" checked={!!form.ativo} onChange={onChange} />
               <span className="text-sm text-gray-300">Produto ativo (aparece no site)</span>
             </div>
-          </div>
+        
           {/* ================= VARIAÇÕES ================= */}
 
 <div style={{ marginTop: 20 }}>
