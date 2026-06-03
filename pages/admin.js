@@ -637,6 +637,7 @@ if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
     </option>
   ))}
 </select>
+</div>
               </div>
 
               <div className="mt-3 flex gap-2">
