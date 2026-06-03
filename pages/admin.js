@@ -68,7 +68,7 @@ export default function Admin() {
     nome: "",
     preco: "",
     destaque: "",
-    categorias: "Outro",
+    categorias: ["Outro"],
     descricao: "",
     ativo: true,
     imagem_url: "",
@@ -245,7 +245,11 @@ async function carregarSabores() {
       nome: p.nome || "",
       preco: String(p.preco ?? ""),
       destaque: p.destaque || "",
-      categoria: p.categoria || [p.categorias || "Outro"],
+      categorias: Array.isArray(p.categorias)
+      ? p.categorias
+      : p.categoria
+      ? [p.categoria]
+      : ["Outro"],
       descricao: p.descricao || "",
       ativo: p.ativo !== false,
       imagem_url: corrigirUrlImagem(p.imagem_url || ""),
@@ -431,7 +435,10 @@ if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
       id: form.id,
       nome,
       preco,
-      categoria: form.categorias || ["Outro"],
+      categorias:
+      Array.isArray(form.categorias) && form.categorias.length
+      ? form.categorias
+      : ["Outro"],
       destaque: (form.destaque || "").trim() || null,
       descricao: (form.descricao || "").trim() || null,
       ativo: form.ativo !== false,
@@ -602,43 +609,43 @@ if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
 
             {/* CATEGORIA (BANCO) */}
             <div>
-              <label className="text-sm text-gray-300 font-semibold">Categoria</label>
-            <div className="mt-2 flex flex-wrap gap-2">
-            {categorias.map((c) => {
-              const ativo = form.categorias?.includes(c.nome);
+                <label className="text-sm text-gray-300 font-semibold">
+                  Categorias
+                </label>
 
-              return (
-                <button
-                  key={c.id || c.slug}
-                  type="button"
-                  onClick={() => {
-                    setForm((f) => {
-                      const atual = f.categorias || [];
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {categorias.map((c) => {
+                    const ativo = form.categorias?.includes(c.nome);
 
-                      if (atual.includes(c.nome)) {
-                        return {
-                          ...f,
-                          categorias: atual.filter((cat) => cat !== c.nome),
-                        };
-                      } else {
-                        return {
-                          ...f,
-                          categorias: [...atual, c.nome],
-                        };
-                      }
-                    });
-                  }}
-                  className={`px-3 py-1 rounded-full border text-sm font-bold transition ${
-                    ativo
-                      ? "bg-yellow-400 text-black border-yellow-400"
-                      : "border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
-                  }`}
-                >
-                  {c.nome}
-                </button>
-              );
-            })}
-          </div>
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          if (ativo) {
+                            setForm((f) => ({
+                              ...f,
+                              categorias: f.categorias.filter((x) => x !== c.nome),
+                            }));
+                          } else {
+                            setForm((f) => ({
+                              ...f,
+                              categorias: [...(f.categorias || []), c.nome],
+                            }));
+                          }
+                        }}
+                        className={`px-3 py-1 rounded-full border text-sm font-bold transition ${
+                          ativo
+                            ? "bg-yellow-400 text-black border-yellow-400"
+                            : "border-yellow-400 text-yellow-400"
+                        }`}
+                      >
+                        {c.nome}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               <div className="mt-3 flex gap-2">
                 <input
