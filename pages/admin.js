@@ -612,39 +612,35 @@ if (Array.isArray(tamanhosSelecionados) && tamanhosSelecionados.length) {
                 <label className="text-sm text-gray-300 font-semibold">
                   Categorias
                 </label>
+                <label className="block text-sm font-bold mb-2">
+                  Categorias
+                </label>
 
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {categorias.map((c) => {
-                    const ativo = form.categorias?.includes(c.nome);
+                <select
+                  className="w-full bg-black border border-yellow-400 rounded-xl px-4 py-3 text-white"
+                  onChange={(e) => {
+                    const valor = e.target.value;
 
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          if (ativo) {
-                            setForm((f) => ({
-                              ...f,
-                              categorias: f.categorias.filter((x) => x !== c.nome),
-                            }));
-                          } else {
-                            setForm((f) => ({
-                              ...f,
-                              categorias: [...(f.categorias || []), c.nome],
-                            }));
-                          }
-                        }}
-                        className={`px-3 py-1 rounded-full border text-sm font-bold transition ${
-                          ativo
-                            ? "bg-yellow-400 text-black border-yellow-400"
-                            : "border-yellow-400 text-yellow-400"
-                        }`}
-                      >
-                        {c.nome}
-                      </button>
-                    );
-                  })}
-                </div>
+                    if (
+                      valor &&
+                      !produtoCategorias.includes(valor)
+                    ) {
+                      setProdutoCategorias([
+                        ...produtoCategorias,
+                        valor
+                      ]);
+                    }
+                  }}
+                >
+                  <option value="">Selecione uma categoria</option>
+
+                  {categorias.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+               
               </div>
 
               <div className="mt-3 flex gap-2">
